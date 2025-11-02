@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Whiteboard</title>
+    <title>Collaborative Whiteboard</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -28,16 +28,16 @@
 
     <div id="app" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-xl">
         <h1 class="text-3xl font-extrabold text-blue-600 mb-2 text-center">
-            Real-Time Collaborative Notes
+            Collaborative Notes (UI Demo)
         </h1>
         <p class="text-center text-sm text-gray-500 mb-6">
-            Share ideas instantly with other users.
+            Add notes to the board. (Note: Real-time sharing requires a database setup beyond GitHub Pages)
         </p>
 
         <!-- User Info -->
         <div class="mb-6 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-            <p class="text-xs font-semibold text-blue-800">Your User ID (Share to collaborate):</p>
-            <p id="user-id" class="text-sm font-mono text-gray-800 break-all mt-1">Loading...</p>
+            <p class="text-xs font-semibold text-blue-800">Your User ID (Local Session):</p>
+            <p id="user-id" class="text-sm font-mono text-gray-800 break-all mt-1">Local User - 12345</p>
         </div>
 
         <!-- Input Section -->
@@ -53,7 +53,6 @@
                 id="add-note-button" 
                 onclick="addNote()" 
                 class="py-3 px-6 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition duration-200 shadow-md flex-shrink-0"
-                disabled
             >
                 Add Note
             </button>
@@ -61,153 +60,59 @@
 
         <!-- Notes Display Section -->
         <div class="mb-4">
-            <h2 class="text-xl font-bold text-gray-700 mb-3">Shared Whiteboard</h2>
+            <h2 class="text-xl font-bold text-gray-700 mb-3">Local Whiteboard</h2>
             <div id="notes-container" class="space-y-3 p-2 bg-gray-50 rounded-lg border">
-                <p id="loading-message" class="text-center text-gray-400 p-8">Connecting to database...</p>
+                <!-- Initial placeholder notes -->
+                <div class="note-card p-3 rounded-lg bg-white border border-gray-100">
+                    <p class="text-gray-900 font-medium whitespace-pre-wrap">This is a demo note to show the styling.</p>
+                    <div class="mt-1 flex justify-between items-center text-xs text-gray-400 border-t border-gray-50 pt-1">
+                        <span class="text-blue-500 font-semibold">Posted by: Demo</span>
+                        <span>12:00 PM | 1/1/2025</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Error/Status Message -->
-        <div id="status-message" class="text-center text-red-500 text-sm mt-4 hidden"></div>
+        <!-- Status Message -->
+        <div id="status-message" class="text-center text-gray-500 text-sm mt-4">
+             Notes added here will only appear in your browser session.
+        </div>
     </div>
 
-    <!-- Firebase Imports and Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, setLogLevel, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- ENVIRONMENT HANDLING AND FALLBACK ---
-        // Global Firebase variables provided by the environment (may be undefined on GitHub Pages)
-        const __app_id = typeof __app_id !== 'undefined' ? __app_id : 'github-pages-test-id';
-        const __firebase_config = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        const __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Use a simple, minimal config when running outside the Canvas for external deployment testing
-        const fallbackConfig = {
-            apiKey: "AIzaSy..." + "REPLACE_WITH_YOUR_FIREBASE_API_KEY", // Note: This key must be valid for real external persistence
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
-        };
-        // We use the provided config if available, otherwise we warn the user that external persistence won't work.
-        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : fallbackConfig;
+    <!-- JavaScript Logic (No Firebase) -->
+    <script>
+        // Global array to store notes locally in the browser session
+        let localNotes = [];
+        const notesContainer = document.getElementById('notes-container');
+        const userIdDisplay = document.getElementById('user-id');
         
-        let db = null;
-        let auth = null;
-        let currentUserId = null;
-        let notesCollectionRef = null;
+        // Use a simple, locally stored user ID for display purposes
+        let currentUserId = localStorage.getItem('localUserId') || crypto.randomUUID().substring(0, 10);
+        localStorage.setItem('localUserId', currentUserId);
+        userIdDisplay.textContent = 'Local User - ' + currentUserId;
 
-        // The public path for the data collection. We use the __app_id as the unique identifier.
-        const PUBLIC_NOTES_PATH = `artifacts/${__app_id}/public/data/notes`;
 
-        setLogLevel('Debug'); // Enable debug logging for better visibility
-
-        // 1. Initialization and Authentication
-        async function initApp() {
-            try {
-                // If the config is the fallback, warn the user.
-                if (firebaseConfig === fallbackConfig) {
-                    document.getElementById('status-message').textContent = "WARNING: Running on external host (GitHub Pages). Data will be stored under a test path and will NOT persist across reloads unless you replace the 'fallbackConfig' with your own Firebase details.";
-                    document.getElementById('status-message').classList.remove('hidden');
-                }
-
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Authenticate the user
-                if (__initial_auth_token) {
-                    // Authenticate using the provided token when running inside the Canvas
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    // Use anonymous sign-in for external deployment (GitHub Pages)
-                    await signInAnonymously(auth);
-                }
-
-                // Wait for auth state to confirm user is logged in
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        document.getElementById('user-id').textContent = currentUserId;
-                        document.getElementById('add-note-button').disabled = false;
-                        notesCollectionRef = collection(db, PUBLIC_NOTES_PATH);
-                        
-                        // Start listening for notes only after successful auth
-                        fetchNotes(); 
-                    } else {
-                        // Fallback logic for when anonymous sign-in fails
-                        currentUserId = crypto.randomUUID();
-                        document.getElementById('user-id').textContent = currentUserId + " (ID Fallback)";
-                        document.getElementById('status-message').textContent = "Warning: Authentication failed. Data might not persist.";
-                        document.getElementById('status-message').classList.remove('hidden');
-                        document.getElementById('add-note-button').disabled = false;
-                        notesCollectionRef = collection(db, PUBLIC_NOTES_PATH);
-                        fetchNotes(); 
-                    }
-                });
-
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                document.getElementById('user-id').textContent = "Error initializing Firebase.";
-                document.getElementById('status-message').textContent = `App setup failed: ${error.message}`;
-                document.getElementById('status-message').classList.remove('hidden');
-            }
-        }
-
-        // 2. Real-Time Data Fetching (The core of collaboration)
-        function fetchNotes() {
-            if (!notesCollectionRef) {
-                console.error("Notes collection reference not set.");
-                return;
-            }
-
-            const notesQuery = query(notesCollectionRef); // Simple query
-            const notesContainer = document.getElementById('notes-container');
-            const loadingMessage = document.getElementById('loading-message');
-
-            // Set up the real-time listener
-            onSnapshot(notesQuery, (snapshot) => {
-                loadingMessage.classList.add('hidden'); // Hide loading once data starts flowing
-                
-                const notes = [];
-                snapshot.forEach(doc => {
-                    notes.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Sort by timestamp in memory (descending order: newest first)
-                notes.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
-
-                displayNotes(notes);
-
-            }, (error) => {
-                console.error("Firestore Snapshot Error:", error);
-                notesContainer.innerHTML = `<p class="text-center text-red-500 p-8">Error fetching notes: ${error.message}</p>`;
-            });
-        }
-
-        // 3. Rendering Notes to the UI
-        function displayNotes(notes) {
-            const notesContainer = document.getElementById('notes-container');
+        // 1. Rendering Notes to the UI
+        function displayNotes() {
             notesContainer.innerHTML = ''; // Clear existing notes
 
-            if (notes.length === 0) {
-                notesContainer.innerHTML = `<p class="text-center text-gray-400 p-8">Be the first to post a note!</p>`;
+            if (localNotes.length === 0) {
+                notesContainer.innerHTML = `<p class="text-center text-gray-400 p-8">Start adding notes now!</p>`;
                 return;
             }
 
-            notes.forEach(note => {
+            // Sort by timestamp (newest first)
+            localNotes.sort((a, b) => b.timestamp - a.timestamp);
+
+            localNotes.forEach(note => {
                 const noteElement = document.createElement('div');
                 noteElement.className = 'note-card p-3 rounded-lg bg-white border border-gray-100';
                 
                 // Format the timestamp
-                const date = note.timestamp ? new Date(note.timestamp.toMillis()) : new Date();
+                const date = new Date(note.timestamp);
                 const timeString = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 const dateString = date.toLocaleDateString();
                 
-                // Determine if this note was posted by the current user
                 const isMine = note.userId === currentUserId;
                 const authorDisplay = isMine ? 'You' : note.userId.substring(0, 8) + '...';
 
@@ -223,34 +128,39 @@
         }
 
 
-        // 4. Adding New Notes
-        window.addNote = async function() {
+        // 2. Adding New Notes
+        window.addNote = function() {
             const inputElement = document.getElementById('new-note-input');
             const content = inputElement.value.trim();
 
-            if (!content || !notesCollectionRef) {
+            if (!content) {
                 return;
             }
 
-            try {
-                await addDoc(notesCollectionRef, {
-                    content: content,
-                    userId: currentUserId,
-                    timestamp: serverTimestamp() // Use Firestore's server timestamp for accurate ordering
-                });
-                
-                inputElement.value = ''; // Clear input on success
-                // No need to manually update the UI; the onSnapshot listener handles it!
+            const newNote = {
+                content: content,
+                userId: currentUserId,
+                timestamp: Date.now() // Local timestamp
+            };
+            
+            // Add to local array
+            localNotes.push(newNote);
+            
+            // Re-render the UI
+            displayNotes();
 
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                document.getElementById('status-message').textContent = "Error adding note. Check console for details.";
-                document.getElementById('status-message').classList.remove('hidden');
-            }
+            inputElement.value = ''; // Clear input on success
         };
 
         // Initialize the app on load
-        window.onload = initApp;
+        window.onload = function() {
+            // Display an initial note list
+            localNotes = [
+                { content: "Project ideas for next week.", userId: 'demo-user-1', timestamp: Date.now() - 5000000 },
+                { content: "Remember to check the PWA installation on Android.", userId: currentUserId, timestamp: Date.now() - 3000000 }
+            ];
+            displayNotes();
+        }
     </script>
     
     <!-- PWA Service Worker Registration -->
