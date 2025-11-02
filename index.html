@@ -77,26 +77,41 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, setLogLevel, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Firebase variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- ENVIRONMENT HANDLING AND FALLBACK ---
+        // Global Firebase variables provided by the environment (may be undefined on GitHub Pages)
+        const __app_id = typeof __app_id !== 'undefined' ? __app_id : 'github-pages-test-id';
+        const __firebase_config = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        const __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        // Use a simple, minimal config when running outside the Canvas for external deployment testing
+        const fallbackConfig = {
+            apiKey: "AIzaSy..." + "REPLACE_WITH_YOUR_FIREBASE_API_KEY", // Note: This key must be valid for real external persistence
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+        // We use the provided config if available, otherwise we warn the user that external persistence won't work.
+        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : fallbackConfig;
+        
         let db = null;
         let auth = null;
         let currentUserId = null;
         let notesCollectionRef = null;
 
-        // Firestore paths are mandatory to use the public artifact area
-        const PUBLIC_NOTES_PATH = `artifacts/${appId}/public/data/notes`;
+        // The public path for the data collection. We use the __app_id as the unique identifier.
+        const PUBLIC_NOTES_PATH = `artifacts/${__app_id}/public/data/notes`;
 
         setLogLevel('Debug'); // Enable debug logging for better visibility
 
         // 1. Initialization and Authentication
         async function initApp() {
             try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    throw new Error("Firebase config is missing or invalid.");
+                // If the config is the fallback, warn the user.
+                if (firebaseConfig === fallbackConfig) {
+                    document.getElementById('status-message').textContent = "WARNING: Running on external host (GitHub Pages). Data will be stored under a test path and will NOT persist across reloads unless you replace the 'fallbackConfig' with your own Firebase details.";
+                    document.getElementById('status-message').classList.remove('hidden');
                 }
 
                 const app = initializeApp(firebaseConfig);
@@ -104,9 +119,11 @@
                 auth = getAuth(app);
 
                 // Authenticate the user
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                if (__initial_auth_token) {
+                    // Authenticate using the provided token when running inside the Canvas
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
+                    // Use anonymous sign-in for external deployment (GitHub Pages)
                     await signInAnonymously(auth);
                 }
 
@@ -121,13 +138,12 @@
                         // Start listening for notes only after successful auth
                         fetchNotes(); 
                     } else {
-                        // Fallback: Use a random ID if anonymous sign-in failed (shouldn't happen with our setup)
+                        // Fallback logic for when anonymous sign-in fails
                         currentUserId = crypto.randomUUID();
-                        document.getElementById('user-id').textContent = currentUserId + " (Anonymous Fallback)";
-                        document.getElementById('status-message').textContent = "Warning: Could not authenticate with Firebase. Data may not persist correctly.";
+                        document.getElementById('user-id').textContent = currentUserId + " (ID Fallback)";
+                        document.getElementById('status-message').textContent = "Warning: Authentication failed. Data might not persist.";
                         document.getElementById('status-message').classList.remove('hidden');
                         document.getElementById('add-note-button').disabled = false;
-                        // Still try to fetch notes, though write permission might be denied by security rules
                         notesCollectionRef = collection(db, PUBLIC_NOTES_PATH);
                         fetchNotes(); 
                     }
@@ -143,7 +159,12 @@
 
         // 2. Real-Time Data Fetching (The core of collaboration)
         function fetchNotes() {
-            const notesQuery = query(notesCollectionRef); // Simple query, no sorting to avoid index issues
+            if (!notesCollectionRef) {
+                console.error("Notes collection reference not set.");
+                return;
+            }
+
+            const notesQuery = query(notesCollectionRef); // Simple query
             const notesContainer = document.getElementById('notes-container');
             const loadingMessage = document.getElementById('loading-message');
 
@@ -153,7 +174,6 @@
                 
                 const notes = [];
                 snapshot.forEach(doc => {
-                    // Collect notes, including the ID for potential future deletion/editing
                     notes.push({ id: doc.id, ...doc.data() });
                 });
 
