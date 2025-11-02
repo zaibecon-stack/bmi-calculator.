@@ -3,74 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick BMI Calculator</title>
+    <title>Personality Type Quiz</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        /* Style for the radio button circles */
-        input[type="radio"]:checked + span {
-            background-color: #2563eb; /* blue-600 */
-            border-color: #2563eb;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Added font family for Urdu to ensure Nastaliq support */
+        }
+        /* Style for Urdu text alignment */
+        .text-ur {
+            direction: rtl;
+            text-align: right;
+        }
+        #app-title {
+            direction: rtl; /* Apply RTL to the title for better centering */
         }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
     <div id="app" class="bg-white p-6 md:p-10 rounded-xl shadow-2xl w-full max-w-lg">
-        <h1 class="text-3xl font-extrabold text-gray-900 mb-4 text-center">
-            BMI Calculator
+        <h1 id="app-title" class="text-3xl font-extrabold text-gray-900 mb-6 text-center transition-colors duration-300">
+            Personality Type Quiz
         </h1>
-        <p class="text-gray-500 mb-6 text-center">
-            Calculate your Body Mass Index (BMI).
-        </p>
 
-        <!-- Unit Selection -->
-        <div class="mb-6 flex space-x-4 justify-center">
-            <label class="inline-flex items-center cursor-pointer">
-                <input type="radio" name="unitSystem" value="metric" checked class="hidden" onchange="toggleUnits('metric')">
-                <span class="w-5 h-5 inline-block mr-2 rounded-full border border-gray-400 flex-shrink-0 transition-colors duration-200"></span>
-                <span class="text-gray-700 font-semibold">Metric (kg, m)</span>
-            </label>
-            <label class="inline-flex items-center cursor-pointer">
-                <input type="radio" name="unitSystem" value="imperial" class="hidden" onchange="toggleUnits('imperial')">
-                <span class="w-5 h-5 inline-block mr-2 rounded-full border border-gray-400 flex-shrink-0 transition-colors duration-200"></span>
-                <span class="text-gray-700 font-semibold">Imperial (lbs, ft/in)</span>
-            </label>
+        <!-- Language Selector -->
+        <div class="mb-6 text-center">
+            <label for="language-select" class="text-gray-700 font-medium mr-2" id="language-label">Zuban / Language:</label>
+            <select id="language-select" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" onchange="updateUIForLanguage()">
+                <option value="en">English</option>
+                <option value="ur">اردو (Urdu)</option>
+            </select>
         </div>
 
-        <!-- Input Form -->
-        <div class="grid grid-cols-1 gap-6">
-            <input type="text" id="name" placeholder="Name (e.g., John Doe)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150">
-            <input type="number" id="age" placeholder="Age (years)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150">
-
-            <!-- Metric Inputs (Default) -->
-            <div id="metric-inputs">
-                <input type="number" id="weight-kg" placeholder="Weight (kg)" class="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6 transition duration-150">
-                <input type="number" id="height-m" placeholder="Height (meters) e.g., 1.75" class="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150">
+        <!-- Quiz Container -->
+        <div id="quiz-container">
+            <!-- Start Screen -->
+            <div id="start-screen" class="text-center">
+                <p id="start-text" class="text-gray-600 mb-6">
+                    Answer 25 questions to discover your personality type (MBTI style).
+                </p>
+                <button id="start-button" onclick="startQuiz()" class="py-3 px-6 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                    Start Quiz
+                </button>
             </div>
 
-            <!-- Imperial Inputs (Hidden by default) -->
-            <div id="imperial-inputs" class="hidden">
-                <input type="number" id="weight-lbs" placeholder="Weight (pounds - lbs)" class="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6 transition duration-150">
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="number" id="height-ft" placeholder="Height (Feet)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150">
-                    <input type="number" id="height-in" placeholder="Height (Inches)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150">
+            <!-- Question Screen -->
+            <div id="question-screen" class="hidden">
+                <div class="mb-4">
+                    <p id="question-number" class="text-sm text-gray-500 mb-2"></p>
+                    <p id="question-text" class="text-xl font-semibold text-gray-800"></p>
+                </div>
+                
+                <div class="flex flex-col space-y-4">
+                    <button id="answer-yes" onclick="answerQuestion(1)" class="py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition duration-150 shadow-sm">
+                        Yes
+                    </button>
+                    <button id="answer-no" onclick="answerQuestion(0)" class="py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition duration-150 shadow-sm">
+                        No
+                    </button>
+                </div>
+                <div id="progress-bar" class="w-full bg-gray-200 rounded-full h-2.5 mt-6">
+                    <div id="progress-fill" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
             </div>
 
-            <button onclick="calculateBMI()" class="mt-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
-                Calculate BMI
-            </button>
-        </div>
-
-        <!-- Result Display -->
-        <div id="result-box" class="mt-8 p-4 border border-gray-200 rounded-lg hidden shadow-inner transition duration-300">
-            <p id="error-message" class="text-red-600 font-semibold text-center mb-2 hidden"></p>
-            <p id="bmi-display" class="text-3xl font-extrabold text-center mb-2 transition duration-300"></p>
-            <p id="category-display" class="text-lg font-semibold text-center"></p>
-            <p id="advice-display" class="text-sm text-gray-600 mt-3 text-center"></p>
+            <!-- Result Screen -->
+            <div id="result-screen" class="hidden text-center">
+                <p id="result-intro" class="text-lg text-gray-600 mb-4"></p>
+                <p id="final-type" class="text-6xl font-extrabold text-blue-600 mb-4"></p>
+                <p id="type-description" class="text-gray-700 mb-6"></p>
+                <button id="retake-button" onclick="resetQuiz()" class="py-3 px-6 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-200 shadow-md">
+                    Retake Quiz
+                </button>
+            </div>
         </div>
     </div>
 
@@ -88,131 +96,240 @@
             });
         }
 
-        // --- JavaScript Logic ---
-        function toggleUnits(unitSystem) {
-            const metric = document.getElementById('metric-inputs');
-            const imperial = document.getElementById('imperial-inputs');
+        // --- Core Quiz Data ---
+        const questions = [
+            // E/I - Extraversion / Introversion (Q1-Q6)
+            { id: 1, dichotomy: 'E', text_en: "After social gatherings, you feel energized.", text_ur: "لوگوں سے ملنے کے بعد آپ کو طاقت محسوس ہوتی ہے۔", score: 1 },
+            { id: 2, dichotomy: 'I', text_en: "You prefer quiet activities and hobbies.", text_ur: "آپ پرسکون مشاغل اور کام پسند کرتے ہیں۔", score: 1 },
+            { id: 3, dichotomy: 'E', text_en: "You often talk before thinking everything through.", text_ur: "آپ اکثر سوچنے سے پہلے بولنا شروع کر دیتے ہیں۔", score: 1 },
+            { id: 4, dichotomy: 'I', text_en: "You often find silence or alone time comforting.", text_ur: "آپ کو اکیلے رہنا اور خاموشی اچھی لگتی ہے۔", score: 1 },
+            { id: 5, dichotomy: 'E', text_en: "You find it easy to start talking to strangers.", text_ur: "آپ کے لیے اجنبیوں سے بات شروع کرنا آسان ہے۔", score: 1 },
+            { id: 6, dichotomy: 'I', text_en: "You find too much social interaction tiring.", text_ur: "زیادہ سماجی سرگرمی آپ کو تھکا دیتی ہے۔", score: 1 },
             
-            if (unitSystem === 'metric') {
-                metric.classList.remove('hidden');
-                imperial.classList.add('hidden');
-            } else {
-                metric.classList.add('hidden');
-                imperial.classList.remove('hidden');
+            // S/N - Sensing / Intuition (Q7-Q13)
+            { id: 7, dichotomy: 'S', text_en: "You focus on what is real and practical right now.", text_ur: "آپ اس بات پر توجہ دیتے ہیں جو ابھی حقیقی اور عملی ہے۔", score: 1 },
+            { id: 8, dichotomy: 'N', text_en: "You are more interested in the future and new ideas.", text_ur: "آپ کو مستقبل اور نئے خیالات میں زیادہ دلچسپی ہے۔", score: 1 },
+            { id: 9, dichotomy: 'S', text_en: "You rely on facts and details rather than theories.", text_ur: "آپ نظریات کے بجائے حقائق اور تفصیلات پر بھروسہ کرتے ہیں۔", score: 1 },
+            { id: 10, dichotomy: 'N', text_en: "You enjoy discussing abstract or complex concepts.", text_ur: "آپ پیچیدہ اور گہری باتوں پر بحث کرنا پسند کرتے ہیں۔", score: 1 },
+            { id: 11, dichotomy: 'S', text_en: "You trust proven evidence more than a gut feeling.", text_ur: "آپ وجدان سے زیادہ ثابت شدہ ثبوت پر یقین رکھتے ہیں۔", score: 1 },
+            { id: 12, dichotomy: 'N', text_en: "You often think about 'what if' scenarios.", text_ur: "آپ اکثر سوچتے ہیں کہ 'کیا ہوتا اگر...'۔", score: 1 },
+            { id: 13, dichotomy: 'S', text_en: "You are good at remembering real-life details and dates.", text_ur: "آپ کو حقیقی زندگی کی چھوٹی چیزیں اور تاریخیں یاد رہتی ہیں۔", score: 1 },
+
+            // T/F - Thinking / Feeling (Q14-Q19)
+            { id: 14, dichotomy: 'T', text_en: "When making decisions, you focus on logic and facts.", text_ur: "فیصلے کرتے وقت، آپ منطق اور حقائق پر توجہ دیتے ہیں۔", score: 1 },
+            { id: 15, dichotomy: 'F', text_en: "You let compassion and feelings guide your choices.", text_ur: "آپ کی رہنمائی زیادہ تر ہمدردی اور جذبات سے ہوتی ہے۔", score: 1 },
+            { id: 16, dichotomy: 'T', text_en: "Being honest and correct is more important than avoiding conflict.", text_ur: "ایماندار اور صحیح ہونا جھگڑے سے بچنے سے زیادہ اہم ہے۔", score: 1 },
+            { id: 17, dichotomy: 'F', text_en: "You try to avoid conflict to maintain harmony.", text_ur: "آپ ہم آہنگی برقرار رکھنے کے لیے جھگڑے سے بچتے ہیں۔", score: 1 },
+            { id: 18, dichotomy: 'T', text_en: "You believe rules should apply equally to everyone.", text_ur: "آپ مانتے ہیں کہ اصول سب پر یکساں لاگو ہونے چاہئیں۔", score: 1 },
+            { id: 19, dichotomy: 'F', text_en: "You often worry about how your actions affect others' feelings.", text_ur: "آپ اکثر پریشان ہوتے ہیں کہ آپ کے کام سے دوسروں کے جذبات پر کیا اثر پڑے گا۔", score: 1 },
+
+            // J/P - Judging / Perceiving (Q20-Q25)
+            { id: 20, dichotomy: 'J', text_en: "You prefer to plan your day in detail and stick to it.", text_ur: "آپ اپنے دن کی تفصیل سے منصوبہ بندی کرنا اور اس پر قائم رہنا پسند کرتے ہیں۔", score: 1 },
+            { id: 21, dichotomy: 'P', text_en: "You often wait until the last minute to finish tasks.", text_ur: "آپ اکثر کاموں کو ختم کرنے کے لیے آخری وقت کا انتظار کرتے ہیں۔", score: 1 },
+            { id: 22, dichotomy: 'J', text_en: "You feel uncomfortable when things are messy or unplanned.", text_ur: "جب چیزیں بے ترتیب یا غیر منصوبہ بند ہوں تو آپ بے چین ہوتے ہیں۔", score: 1 },
+            { id: 23, dichotomy: 'P', text_en: "You prefer keeping your options open over committing early.", text_ur: "آپ پہلے وعدہ کرنے کے بجائے اپنے اختیارات کھلے رکھنا پسند کرتے ہیں۔", score: 1 },
+            { id: 24, dichotomy: 'J', text_en: "You like to organize your space and work using clear systems.", text_ur: "آپ واضح نظام کا استعمال کرتے ہوئے اپنی جگہ اور کام کو منظم کرنا پسند کرتے ہیں۔", score: 1 },
+            { id: 25, dichotomy: 'P', text_en: "You enjoy doing things spontaneously without a fixed schedule.", text_ur: "آپ بغیر کسی مقررہ شیڈول کے خود بخود کام کرنا پسند کرتے ہیں۔", score: 1 },
+        ];
+
+        const translations = {
+            'en': {
+                'title': 'Personality Type Quiz',
+                'startText': 'Answer 25 questions to discover your personality type (MBTI style).',
+                'startBtn': 'Start Quiz',
+                'questionNum': 'Question',
+                'yes': 'Yes',
+                'no': 'No',
+                'resultIntro': 'Your Personality Type:',
+                'retakeBtn': 'Retake Quiz',
+                'languageLabel': 'Zuban / Language:',
+                'typePrefix': 'Your result:',
+                // Descriptions (highly simplified for space)
+                'INTJ': 'The Architect: Strategic and highly logical thinkers.',
+                'INTP': 'The Logician: Innovative inventors with a thirst for knowledge.',
+                'ENTJ': 'The Commander: Bold, imaginative, and strong-willed leaders.',
+                'ENTP': 'The Debater: Quick-witted, smart, and challenging people.',
+                'INFJ': 'The Advocate: Quiet, mystical, yet very inspiring idealists.',
+                'INFP': 'The Mediator: Poetic, kind, and altruistic people, always eager to help a good cause.',
+                'ENFJ': 'The Protagonist: Charismatic and inspiring leaders.',
+                'ENFP': 'The Campaigner: Enthusiastic, creative, and social free spirits.',
+                'ISTJ': 'The Logistician: Practical and fact-minded individuals.',
+                'ISFJ': 'The Defender: Dedicated and warm protectors, always ready to defend their loved ones.',
+                'ESTJ': 'The Executive: Excellent administrators, unmatched at managing things or people.',
+                'ESFJ': 'The Consul: Caring, social, and popular people.',
+                'ISTP': 'The Virtuoso: Bold, practical experimenters, masters of all kinds of tools.',
+                'ISFP': 'The Adventurer: Flexible and charming artists, always ready to explore and experience new things.',
+                'ESTP': 'The Entrepreneur: Smart, energetic, and perceptive people who truly enjoy living on the edge.',
+                'ESFP': 'The Entertainer: Spontaneous, energetic, and enthusiastic people.',
+            },
+            'ur': {
+                'title': 'شخصیت کی قسم کا کوئز',
+                'startText': 'اپنی شخصیت کی قسم (MBTI style) جاننے کے لیے 25 آسان سوالوں کے جواب دیں۔',
+                'startBtn': 'کوئز شروع کریں',
+                'questionNum': 'سوال',
+                'yes': 'ہاں',
+                'no': 'نہیں',
+                'resultIntro': 'آپ کی شخصیت کی قسم:',
+                'retakeBtn': 'کوئز دوبارہ دیں',
+                'languageLabel': 'زبان / Language:',
+                'typePrefix': 'آپ کا نتیجہ:',
+                // Descriptions (Urdu)
+                'INTJ': 'معمار: گہری حکمت عملی اور انتہائی منطقی سوچ رکھنے والے۔',
+                'INTP': 'منطقی: علم کی پیاس رکھنے والے نئے خیالات اور ایجادات کے مالک۔',
+                'ENTJ': 'کمانڈر: نڈر، تخیلاتی، اور مضبوط ارادے کے حامل قائد۔',
+                'ENTP': 'بحث کرنے والا: ذہین، تیز فہم، اور چیلنج دینے والے لوگ۔',
+                'INFJ': 'وکیل: پرسکون، پر اسرار، پھر بھی بہت متاثر کن مثالی شخصیتیں۔',
+                'INFP': 'درمیانی: شاعرانہ، مہربان، اور نیک لوگ، ہمیشہ اچھے مقصد میں مدد کے لیے تیار۔',
+                'ENFJ': 'مرکزی کردار: کرشماتی اور متاثر کن قائدین۔',
+                'ENFP': 'مہم چلانے والا: پرجوش، تخلیقی، اور سماجی طور پر آزاد طبیعت کے لوگ۔',
+                'ISTJ': 'لاجیستیشن: عملی اور حقیقت پر یقین رکھنے والے افراد۔',
+                'ISFJ': 'محافظ: وقف اور گرم جوشی سے دفاع کرنے والے، اپنے پیاروں کے لیے ہمیشہ تیار۔',
+                'ESTJ': 'ایگزیکٹو: بہترین منتظمین، چیزوں یا لوگوں کو منظم کرنے میں لاجواب۔',
+                'ESFJ': 'قونصل: خیال رکھنے والے، سماجی، اور مقبول لوگ۔',
+                'ISTP': 'ماہر کاریگر: نڈر، عملی تجربہ کار، ہر قسم کے اوزاروں کے ماہر۔',
+                'ISFP': 'مہم جو: لچکدار اور دلکش فنکار، جو ہمیشہ نئی چیزوں کی تلاش اور تجربہ کے لیے تیار رہتے ہیں۔',
+                'ESTP': 'انٹرپرینیور: ہوشیار، توانائی بخش، اور سمجھدار لوگ جو خطرے مول لینے سے لطف اندوز ہوتے ہیں۔',
+                'ESFP': 'تفریح کنندہ: فطری، پرجوش، اور پرمغز لوگ۔',
             }
-            // Clear result box when units are switched
-            document.getElementById('result-box').classList.add('hidden');
-            document.getElementById('error-message').classList.add('hidden');
+        };
+
+        let currentQuestionIndex = 0;
+        let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+        let currentLanguage = document.getElementById('language-select').value;
+        const totalQuestions = questions.length;
+
+        // --- UI Update and Language Functions ---
+        function getTranslation(key) {
+            // Fallback to English if translation is missing
+            return translations[currentLanguage][key] || translations['en'][key];
         }
 
-        function getUnitSystem() {
-            return document.querySelector('input[name="unitSystem"]:checked').value;
+        function updateStaticText() {
+            currentLanguage = document.getElementById('language-select').value;
+            const isUrdu = currentLanguage === 'ur';
+
+            // Apply directionality for Urdu elements
+            document.getElementById('app-title').classList.toggle('text-ur', isUrdu);
+            document.getElementById('start-text').classList.toggle('text-ur', isUrdu);
+            document.getElementById('result-intro').classList.toggle('text-ur', isUrdu);
+            document.getElementById('type-description').classList.toggle('text-ur', isUrdu);
+
+            // Update all static text content
+            document.getElementById('app-title').textContent = getTranslation('title');
+            document.getElementById('start-text').textContent = getTranslation('startText');
+            document.getElementById('start-button').textContent = getTranslation('startBtn');
+            document.getElementById('answer-yes').textContent = getTranslation('yes');
+            document.getElementById('answer-no').textContent = getTranslation('no');
+            document.getElementById('result-intro').textContent = getTranslation('resultIntro');
+            document.getElementById('retake-button').textContent = getTranslation('retakeBtn');
+            document.getElementById('language-label').textContent = getTranslation('languageLabel');
+        }
+        
+        function updateUIForLanguage() {
+            updateStaticText();
+            // If quiz is running, re-render current question
+            if (!document.getElementById('question-screen').classList.contains('hidden')) {
+                renderQuestion();
+            }
+            // If results are shown, re-render results
+            if (!document.getElementById('result-screen').classList.contains('hidden')) {
+                showResult(); 
+            }
         }
 
-        function calculateBMI() {
-            const name = document.getElementById('name').value.trim();
-            const age = parseFloat(document.getElementById('age').value);
-            const unitSystem = getUnitSystem();
-            let weightKg, heightM;
+        // --- Quiz Flow Functions ---
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('question-screen').classList.remove('hidden');
+            document.getElementById('language-select').disabled = true;
+            renderQuestion();
+        }
 
-            const errorMsg = document.getElementById('error-message');
-            const resultBox = document.getElementById('result-box');
-            resultBox.classList.remove('hidden');
-            errorMsg.classList.add('hidden');
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            const qTextKey = currentLanguage === 'en' ? 'text_en' : 'text_ur';
+            const progress = (currentQuestionIndex / totalQuestions) * 100;
+            const isUrdu = currentLanguage === 'ur';
 
-            // --- 1. Get and Validate Input ---
-            if (!name || isNaN(age) || age <= 0) {
-                errorMsg.textContent = "Please enter a valid name and age.";
-                errorMsg.classList.remove('hidden');
-                return;
-            }
+            document.getElementById('question-text').classList.toggle('text-ur', isUrdu);
+            document.getElementById('question-number').classList.toggle('text-ur', isUrdu);
 
-            if (unitSystem === 'metric') {
-                const weight = parseFloat(document.getElementById('weight-kg').value);
-                const height = parseFloat(document.getElementById('height-m').value);
-                
-                if (isNaN(weight) || weight <= 0 || isNaN(height) || height <= 0) {
-                    errorMsg.textContent = "Please enter valid weight (kg) and height (m).";
-                    errorMsg.classList.remove('hidden');
-                    return;
-                }
-                
-                weightKg = weight;
-                heightM = height;
-                
-            } else { // Imperial System
-                const weightLbs = parseFloat(document.getElementById('weight-lbs').value);
-                const heightFt = parseFloat(document.getElementById('height-ft').value);
-                const heightIn = parseFloat(document.getElementById('height-in').value);
-                
-                if (isNaN(weightLbs) || weightLbs <= 0 || (isNaN(heightFt) && isNaN(heightIn))) {
-                    errorMsg.textContent = "Please enter valid weight (lbs) and height (ft/in).";
-                    errorMsg.classList.remove('hidden');
-                    return;
-                }
-                
-                // Convert Imperial to Metric
-                // 1 lb = 0.453592 kg
-                // 1 inch = 0.0254 meters
-                
-                weightKg = weightLbs * 0.453592;
-                
-                // Total height in inches
-                const totalInches = (heightFt || 0) * 12 + (heightIn || 0);
-                heightM = totalInches * 0.0254;
+            document.getElementById('question-number').textContent = `${getTranslation('questionNum')} ${currentQuestionIndex + 1} of ${totalQuestions}`;
+            document.getElementById('question-text').textContent = q[qTextKey];
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+        }
 
-                if (heightM <= 0) {
-                    errorMsg.textContent = "Height cannot be zero.";
-                    errorMsg.classList.remove('hidden');
-                    return;
-                }
-            }
-
-            // --- 2. Calculate BMI ---
-            // Formula: weight (kg) / [height (m)]^2
-            const bmi = weightKg / (heightM * heightM);
-
-            // --- 3. Determine Category and Styling ---
-            let category = '';
-            let advice = '';
-            let colorClass = '';
-
-            if (bmi < 18.5) {
-                category = 'Underweight';
-                advice = 'Consider consulting a healthcare provider for healthy weight gain.';
-                colorClass = 'text-blue-500 bg-blue-100'; // Blue for caution
-            } else if (bmi >= 18.5 && bmi < 24.9) {
-                category = 'Normal Weight';
-                advice = 'Great job! Keep up the healthy lifestyle.';
-                colorClass = 'text-green-600 bg-green-100'; // Green for good
-            } else if (bmi >= 25 && bmi < 29.9) {
-                category = 'Overweight';
-                advice = 'Focus on diet and increasing physical activity.';
-                colorClass = 'text-yellow-600 bg-yellow-100'; // Yellow for warning
-            } else {
-                category = 'Obesity';
-                advice = 'It is recommended to speak with a healthcare professional.';
-                colorClass = 'text-red-600 bg-red-100'; // Red for severe warning
-            }
-
-            // --- 4. Display Results ---
-            const bmiDisplay = document.getElementById('bmi-display');
-            const categoryDisplay = document.getElementById('category-display');
-            const adviceDisplay = document.getElementById('advice-display');
+        function answerQuestion(isYes) {
+            const q = questions[currentQuestionIndex];
             
-            // Clear previous classes
-            bmiDisplay.className = 'text-3xl font-extrabold text-center mb-2 transition duration-300';
-            categoryDisplay.className = 'text-lg font-semibold text-center';
-            resultBox.className = 'mt-8 p-4 rounded-lg shadow-inner transition duration-300 ' + colorClass;
+            // Score Logic: Yes (1) for the stated dichotomy, No (1) for the opposite.
+            if (isYes) {
+                scores[q.dichotomy] += q.score;
+            } else {
+                const opposite = getOppositeDichotomy(q.dichotomy);
+                scores[opposite] += q.score;
+            }
 
-            bmiDisplay.textContent = `${name}, your BMI is: ${bmi.toFixed(2)}`;
-            categoryDisplay.textContent = `Category: ${category}`;
-            adviceDisplay.textContent = advice;
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < totalQuestions) {
+                renderQuestion();
+            } else {
+                showResult();
+            }
         }
 
-        // Set initial state to metric (redundant but good practice)
+        function getOppositeDichotomy(d) {
+            switch(d) {
+                case 'E': return 'I';
+                case 'I': return 'E';
+                case 'S': return 'N';
+                case 'N': return 'S';
+                case 'T': return 'F';
+                case 'F': return 'T';
+                case 'J': return 'P';
+                case 'P': return 'J';
+            }
+        }
+
+        function showResult() {
+            document.getElementById('question-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('progress-fill').style.width = '100%';
+
+            // Determine the final 4-letter type
+            const letter1 = scores.E >= scores.I ? 'E' : 'I';
+            const letter2 = scores.S >= scores.N ? 'S' : 'N';
+            const letter3 = scores.T >= scores.F ? 'T' : 'F';
+            const letter4 = scores.J >= scores.P ? 'J' : 'P';
+
+            const finalType = letter1 + letter2 + letter3 + letter4;
+            
+            // Apply directionality to results
+            const isUrdu = currentLanguage === 'ur';
+            document.getElementById('result-intro').classList.toggle('text-ur', isUrdu);
+            document.getElementById('type-description').classList.toggle('text-ur', isUrdu);
+
+            // Display results
+            document.getElementById('final-type').textContent = finalType;
+            document.getElementById('type-description').textContent = getTranslation(finalType);
+            document.getElementById('result-intro').textContent = `${getTranslation('typePrefix')} ${getTranslation('resultIntro')}`;
+        }
+
+        function resetQuiz() {
+            document.getElementById('language-select').disabled = false;
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+            document.getElementById('progress-fill').style.width = '0%';
+            updateStaticText(); // Reset any translated start text
+        }
+
+        // Initialize UI on load
         window.onload = function() {
-            toggleUnits('metric'); 
+            updateStaticText();
         };
     </script>
 </body>
