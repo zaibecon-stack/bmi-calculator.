@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMI Calculator</title>
+    
+    <!-- PWA REQUIREMENTS: Link to the manifest and set theme color -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <!-- END PWA REQUIREMENTS -->
+
+    <!-- Load Tailwind CSS for modern, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles */
+        :root {
+            --shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Cool Gray */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container-card {
+            background-color: white;
+            border-radius: 1.5rem; /* 24px */
+            box-shadow: var(--shadow);
+            max-width: 480px;
+            width: 100%;
+            padding: 2rem;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Custom styles for the result card */
+        .result-card {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-card">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-2 text-center">Health Metric Calculator</h1>
+        <p class="text-md text-gray-500 mb-6 text-center">Calculate your Body Mass Index (BMI)</p>
+
+        <!-- Form Inputs -->
+        <form id="bmi-form" class="space-y-4">
+            <!-- Name Input (For personalization, not calculation) -->
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                <input type="text" id="name" placeholder="E.g., Alex"
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <!-- Age Input -->
+            <div>
+                <label for="age" class="block text-sm font-medium text-gray-700">Age (years)</label>
+                <input type="number" id="age" min="1" placeholder="30"
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition" required>
+            </div>
+
+            <!-- Weight Input -->
+            <div>
+                <label for="weight" class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                <input type="number" id="weight" min="1" step="0.1" placeholder="70"
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition" required>
+            </div>
+
+            <!-- Height Input -->
+            <div>
+                <label for="height" class="block text-sm font-medium text-gray-700">Height (m)</label>
+                <input type="number" id="height" min="0.1" step="0.01" placeholder="1.75"
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition" required>
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-200 mt-6">
+                Calculate BMI
+            </button>
+        </form>
+
+        <!-- Result Display -->
+        <div id="result-container" class="mt-8 pt-4 border-t border-gray-200 hidden">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Your Results:</h3>
+            
+            <div id="bmi-output" class="result-card">
+                <!-- BMI results will be dynamically inserted here -->
+            </div>
+
+            <p id="name-output" class="text-sm text-gray-500 mt-4 text-center"></p>
+        </div>
+
+        <!-- Message Modal for errors (No alert() allowed) -->
+        <div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                <h3 class="text-xl font-bold text-red-600 mb-3" id="modal-title">Error</h3>
+                <p id="modal-content" class="text-gray-700 mb-4">Please fill in all required fields with valid numbers.</p>
+                <button onclick="document.getElementById('message-modal').classList.add('hidden'); document.getElementById('message-modal').classList.remove('flex');"
+                        class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition duration-200">
+                    OK
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // PWA: Register the service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // This line attempts to load the service-worker.js file we create below
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('Service Worker registered: ', reg.scope))
+                    .catch(err => console.error('Service Worker registration failed: ', err));
+            });
+        }
+        
+        // Function to show a custom modal message (instead of alert/confirm)
+        function showMessage(title, message) {
+            const modal = document.getElementById('message-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').textContent = message;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        // Main function to calculate and display BMI
+        function calculateBMI(event) {
+            event.preventDefault(); // Stop the form from submitting traditionally
+
+            // Get input values
+            const name = document.getElementById('name').value.trim();
+            const age = parseFloat(document.getElementById('age').value);
+            const weight = parseFloat(document.getElementById('weight').value);
+            const height = parseFloat(document.getElementById('height').value);
+
+            // Basic validation
+            if (isNaN(age) || isNaN(weight) || isNaN(height) || weight <= 0 || height <= 0) {
+                showMessage("Validation Error", "Please ensure Age, Weight, and Height are entered correctly as positive numbers.");
+                return;
+            }
+
+            // BMI Formula: weight (kg) / [height (m)]²
+            const bmi = weight / (height * height);
+            const roundedBMI = bmi.toFixed(2);
+
+            // Determine BMI Category and Color
+            let category = '';
+            let colorClass = '';
+            let advice = '';
+
+            if (bmi < 18.5) {
+                category = 'Underweight';
+                colorClass = 'bg-yellow-200 text-yellow-800 border-yellow-400';
+                advice = 'Consider consulting a healthcare professional for nutritional advice.';
+            } else if (bmi >= 18.5 && bmi < 25) {
+                category = 'Healthy Weight';
+                colorClass = 'bg-green-200 text-green-800 border-green-400';
+                advice = 'Keep up the great work! This is a healthy weight range.';
+            } else if (bmi >= 25 && bmi < 30) {
+                category = 'Overweight';
+                colorClass = 'bg-orange-200 text-orange-800 border-orange-400';
+                advice = 'Focus on diet and physical activity to move into the healthy range.';
+            } else {
+                category = 'Obese';
+                colorClass = 'bg-red-200 text-red-800 border-red-400';
+                advice = 'It is highly recommended to consult a doctor or nutritionist for a detailed plan.';
+            }
+            
+            // Generate HTML output
+            const resultHTML = `
+                <p class="text-4xl font-extrabold mb-1">${roundedBMI}</p>
+                <p class="text-lg font-bold uppercase tracking-wider">${category}</p>
+                <p class="text-sm mt-3">${advice}</p>
+            `;
+
+            // Update DOM
+            const bmiOutput = document.getElementById('bmi-output');
+            const resultContainer = document.getElementById('result-container');
+            const nameOutput = document.getElementById('name-output');
+            
+            // Apply category color/style
+            bmiOutput.className = 'result-card border-2 ' + colorClass;
+            bmiOutput.innerHTML = resultHTML;
+            resultContainer.classList.remove('hidden');
+
+            // Update personalized message
+            if (name) {
+                nameOutput.textContent = `Hello, ${name}! (Age: ${age} years)`;
+            } else {
+                 nameOutput.textContent = `Result for a person of ${age} years.`;
+            }
+        }
+
+        // Attach event listener to the form submission
+        document.getElementById('bmi-form').addEventListener('submit', calculateBMI);
+    </script>
+</body>
+</html>
