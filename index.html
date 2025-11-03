@@ -20,10 +20,38 @@
         #app-title {
             direction: rtl; /* Apply RTL to the title for better centering */
         }
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s ease-out;
+        }
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
+    <!-- Main App Container -->
     <div id="app" class="bg-white p-6 md:p-10 rounded-xl shadow-2xl w-full max-w-lg">
         <h1 id="app-title" class="text-3xl font-extrabold text-gray-900 mb-6 text-center transition-colors duration-300">
             Personality Type Quiz
@@ -57,6 +85,12 @@
                     <p id="question-text" class="text-xl font-semibold text-gray-800"></p>
                 </div>
                 
+                <div class="mb-6">
+                    <button id="explain-button" onclick="showQuestionExplanation()" class="text-sm text-blue-600 hover:text-blue-800 transition duration-150 underline">
+                        Need help understanding?
+                    </button>
+                </div>
+
                 <div class="flex flex-col space-y-4">
                     <button id="answer-yes" onclick="answerQuestion(1)" class="py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition duration-150 shadow-sm">
                         Yes
@@ -75,10 +109,26 @@
                 <p id="result-intro" class="text-lg text-gray-600 mb-4"></p>
                 <p id="final-type" class="text-6xl font-extrabold text-blue-600 mb-4"></p>
                 <p id="type-description" class="text-gray-700 mb-6"></p>
-                <button id="retake-button" onclick="resetQuiz()" class="py-3 px-6 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-200 shadow-md">
-                    Retake Quiz
-                </button>
+                <div class="flex flex-col space-y-3">
+                    <button id="detail-button" onclick="showResultDetail()" class="py-3 px-6 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                        Get Detailed Report
+                    </button>
+                    <button id="retake-button" onclick="resetQuiz()" class="py-3 px-6 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-200 shadow-md">
+                        Retake Quiz
+                    </button>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Explanation Modal -->
+    <div id="explanation-modal" class="modal hidden" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4 text-gray-900"></h2>
+            <div id="modal-content" class="text-gray-700 mb-6 leading-relaxed"></div>
+            <button onclick="closeModal()" class="py-2 px-4 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 transition duration-150">
+                Close
+            </button>
         </div>
     </div>
 
@@ -86,37 +136,212 @@
         // --- Core Quiz Data ---
         const questions = [
             // E/I - Extraversion / Introversion (Q1-Q6)
-            { id: 1, dichotomy: 'E', text_en: "After social gatherings, you feel energized.", text_ur: "لوگوں سے ملنے کے بعد آپ کو طاقت محسوس ہوتی ہے۔", score: 1 },
-            { id: 2, dichotomy: 'I', text_en: "You prefer quiet activities and hobbies.", text_ur: "آپ پرسکون مشاغل اور کام پسند کرتے ہیں۔", score: 1 },
-            { id: 3, dichotomy: 'E', text_en: "You often talk before thinking everything through.", text_ur: "آپ اکثر سوچنے سے پہلے بولنا شروع کر دیتے ہیں۔", score: 1 },
-            { id: 4, dichotomy: 'I', text_en: "You often find silence or alone time comforting.", text_ur: "آپ کو اکیلے رہنا اور خاموشی اچھی لگتی ہے۔", score: 1 },
-            { id: 5, dichotomy: 'E', text_en: "You find it easy to start talking to strangers.", text_ur: "آپ کے لیے اجنبیوں سے بات شروع کرنا آسان ہے۔", score: 1 },
-            { id: 6, dichotomy: 'I', text_en: "You find too much social interaction tiring.", text_ur: "زیادہ سماجی سرگرمی آپ کو تھکا دیتی ہے۔", score: 1 },
+            { 
+                id: 1, dichotomy: 'E', 
+                text_en: "After social gatherings, you feel energized.", 
+                text_ur: "لوگوں سے ملنے کے بعد آپ کو طاقت محسوس ہوتی ہے۔", 
+                detail_en: "This measures where you draw energy from. If external interactions (like parties, meetings) make you feel charged up, answer **Yes (E)**. If they leave you feeling drained and needing alone time, consider **No (I)**.",
+                detail_ur: "یہ سوال پوچھتا ہے کہ آپ توانائی کہاں سے حاصل کرتے ہیں۔ اگر بیرونی تعاملات (جیسے پارٹیاں، ملاقاتیں) آپ کو توانائی سے بھرپور محسوس کرائیں تو **ہاں (E)** کا انتخاب کریں۔ اگر آپ تھکاوٹ محسوس کرتے ہیں اور بعد میں پرسکون وقت کی ضرورت ہوتی ہے، تو **نہیں (I)** پر غور کریں۔",
+                score: 1 
+            },
+            { 
+                id: 2, dichotomy: 'I', 
+                text_en: "You prefer quiet activities and hobbies.", 
+                text_ur: "آپ پرسکون مشاغل اور کام پسند کرتے ہیں۔", 
+                detail_en: "This asks if you prefer environments that limit external stimulation. Quiet hobbies like reading or individual crafts suggest a preference for **Introversion (I)**. If you prefer dynamic group activities, consider **No (E)**.",
+                detail_ur: "یہ پوچھتا ہے کہ کیا آپ ایسے ماحول کو ترجیح دیتے ہیں جو بیرونی محرک کو محدود کرتے ہیں۔ خاموش مشاغل جیسے پڑھنا یا انفرادی دستکاری **داخلیت (I)** کی ترجیح کو ظاہر کرتے ہیں۔ اگر آپ متحرک گروپ سرگرمیوں کو ترجیح دیتے ہیں، تو **نہیں (E)** پر غور کریں۔",
+                score: 1 
+            },
+            { 
+                id: 3, dichotomy: 'E', 
+                text_en: "You often talk before thinking everything through.", 
+                text_ur: "آپ اکثر سوچنے سے پہلے بولنا شروع کر دیتے ہیں۔", 
+                detail_en: "This relates to processing speed. Extraverts tend to think *out loud*, speaking to clarify their thoughts (**Yes - E**). Introverts prefer to think *internally* and formulate a complete thought before speaking (**No - I**).",
+                detail_ur: "اس کا تعلق پروسیسنگ کی رفتار سے ہے۔ خارجی لوگ بلند آواز میں سوچتے ہیں، بول کر اپنے خیالات کو واضح کرتے ہیں (**ہاں - E**)। داخلی لوگ بولنے سے پہلے اندرونی طور پر سوچتے ہیں اور ایک مکمل خیال تشکیل دیتے ہیں (**نہیں - I**)۔",
+                score: 1 
+            },
+            { 
+                id: 4, dichotomy: 'I', 
+                text_en: "You often find silence or alone time comforting.", 
+                text_ur: "آپ کو اکیلے رہنا اور خاموشی اچھی لگتی ہے۔", 
+                detail_en: "If being alone feels comfortable and recharging, you lean towards **Introversion (I)**. If you find silence boring or isolating, you lean towards **Extraversion (E)**.",
+                detail_ur: "اگر اکیلے رہنا آرام دہ اور ری چارجنگ محسوس ہوتا ہے، تو آپ **داخلیت (I)** کی طرف مائل ہیں۔ اگر آپ خاموشی کو بورنگ یا الگ تھلگ محسوس کرتے ہیں، تو آپ **خارجیت (E)** کی طرف مائل ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 5, dichotomy: 'E', 
+                text_en: "You find it easy to start talking to strangers.", 
+                text_ur: "آپ کے لیے اجنبیوں سے بات شروع کرنا آسان ہے۔", 
+                detail_en: "Extraverts often have a lower barrier to entry for social interaction (**Yes - E**). Introverts usually wait for others to initiate or only speak when necessary (**No - I**).",
+                detail_ur: "خارجی لوگوں کو سماجی تعامل کے لیے کم رکاوٹ ہوتی ہے (**ہاں - E**)। داخلی لوگ عام طور پر دوسروں کے شروع کرنے کا انتظار کرتے ہیں یا صرف ضرورت پڑنے پر بولتے ہیں (**نہیں - I**)۔",
+                score: 1 
+            },
+            { 
+                id: 6, dichotomy: 'I', 
+                text_en: "You find too much social interaction tiring.", 
+                text_ur: "زیادہ سماجی سرگرمی آپ کو تھکا دیتی ہے۔", 
+                detail_en: "The focus here is on **energy drain**. If extensive socializing leaves you mentally and emotionally exhausted, choose **Yes (I)**. If you feel more invigorated by it, choose **No (E)**.",
+                detail_ur: "یہاں توجہ **توانائی کے زیاں** پر ہے۔ اگر وسیع سماجی تعلقات آپ کو ذہنی اور جذباتی طور پر تھکا دیتے ہیں، تو **ہاں (I)** کا انتخاب کریں۔ اگر آپ اس سے زیادہ متحرک محسوس کرتے ہیں، تو **نہیں (E)** کا انتخاب کریں۔",
+                score: 1 
+            },
             
             // S/N - Sensing / Intuition (Q7-Q13)
-            { id: 7, dichotomy: 'S', text_en: "You focus on what is real and practical right now.", text_ur: "آپ اس بات پر توجہ دیتے ہیں جو ابھی حقیقی اور عملی ہے۔", score: 1 },
-            { id: 8, dichotomy: 'N', text_en: "You are more interested in the future and new ideas.", text_ur: "آپ کو مستقبل اور نئے خیالات میں زیادہ دلچسپی ہے۔", score: 1 },
-            { id: 9, dichotomy: 'S', text_en: "You rely on facts and details rather than theories.", text_ur: "آپ نظریات کے بجائے حقائق اور تفصیلات پر بھروسہ کرتے ہیں۔", score: 1 },
-            { id: 10, dichotomy: 'N', text_en: "You enjoy discussing abstract or complex concepts.", text_ur: "آپ پیچیدہ اور گہری باتوں پر بحث کرنا پسند کرتے ہیں۔", score: 1 },
-            { id: 11, dichotomy: 'S', text_en: "You trust proven evidence more than a gut feeling.", text_ur: "آپ وجدان سے زیادہ ثابت شدہ ثبوت پر یقین رکھتے ہیں۔", score: 1 },
-            { id: 12, dichotomy: 'N', text_en: "You often think about 'what if' scenarios.", text_ur: "آپ اکثر سوچتے ہیں کہ 'کیا ہوتا اگر...'۔", score: 1 },
-            { id: 13, dichotomy: 'S', text_en: "You are good at remembering real-life details and dates.", text_ur: "آپ کو حقیقی زندگی کی چھوٹی چیزیں اور تاریخیں یاد رہتی ہیں۔", score: 1 },
+            { 
+                id: 7, dichotomy: 'S', 
+                text_en: "You focus on what is real and practical right now.", 
+                text_ur: "آپ اس بات پر توجہ دیتے ہیں جو ابھی حقیقی اور عملی ہے۔", 
+                detail_en: "This is about information gathering. **Sensors (S)** prefer dealing with tangible facts and things you can see, hear, or touch. **Intuitives (N)** prefer theories and future possibilities.",
+                detail_ur: "یہ معلومات جمع کرنے کے بارے میں ہے۔ **حسّی (S)** لوگ ٹھوس حقائق اور ایسی چیزوں سے نمٹنا پسند کرتے ہیں جنہیں آپ دیکھ، سن یا چھو سکتے ہیں۔ **وجدانی (N)** لوگ نظریات اور مستقبل کے امکانات کو ترجیح دیتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 8, dichotomy: 'N', 
+                text_en: "You are more interested in the future and new ideas.", 
+                text_ur: "آپ کو مستقبل اور نئے خیالات میں زیادہ دلچسپی ہے۔", 
+                detail_en: "If your mind often wanders to 'what could be' and you enjoy discussing concepts that haven't happened yet, choose **Yes (N)**. If you are grounded in the present moment, choose **No (S)**.",
+                detail_ur: "اگر آپ کا دماغ اکثر 'کیا ہو سکتا ہے' کی طرف بھٹکتا ہے اور آپ ایسے تصورات پر بات کرنے سے لطف اندوز ہوتے ہیں جو ابھی تک نہیں ہوئے ہیں، تو **ہاں (N)** کا انتخاب کریں۔ اگر آپ موجودہ لمحے میں جڑے ہوئے ہیں، تو **نہیں (S)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 9, dichotomy: 'S', 
+                text_en: "You rely on facts and details rather than theories.", 
+                text_ur: "آپ نظریات کے بجائے حقائق اور تفصیلات پر بھروسہ کرتے ہیں۔", 
+                detail_en: "This confirms your trust in proven data (**Yes - S**) versus abstract models or interpretations (**No - N**). Think about how you learn best: by hands-on experience or reading between the lines.",
+                detail_ur: "یہ ثابت شدہ ڈیٹا (**ہاں - S**) بمقابلہ غیر مرئی ماڈلز یا تشریحات (**نہیں - N**) پر آپ کے اعتماد کی تصدیق کرتا ہے۔ سوچیں کہ آپ بہترین طریقے سے کیسے سیکھتے ہیں: عملی تجربے سے یا بین السطور پڑھنے سے۔",
+                score: 1 
+            },
+            { 
+                id: 10, dichotomy: 'N', 
+                text_en: "You enjoy discussing abstract or complex concepts.", 
+                text_ur: "آپ پیچیدہ اور گہری باتوں پر بحث کرنا پسند کرتے ہیں۔", 
+                detail_en: "**Abstract concepts** are theoretical or philosophical ideas. Enjoying these debates suggests a strong **Intuition (N)** preference. If you prefer to talk about people, events, or objects, choose **No (S)**.",
+                detail_ur: "**پیچیدہ تصورات** نظریاتی یا فلسفیانہ خیالات ہیں۔ ان مباحثوں سے لطف اندوز ہونا ایک مضبوط **وجدان (N)** کی ترجیح کو ظاہر کرتا ہے۔ اگر آپ لوگوں، واقعات یا اشیاء کے بارے میں بات کرنا پسند کرتے ہیں، تو **نہیں (S)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 11, dichotomy: 'S', 
+                text_en: "You trust proven evidence more than a gut feeling.", 
+                text_ur: "آپ وجدان سے زیادہ ثابت شدہ ثبوت پر یقین رکھتے ہیں۔", 
+                detail_en: "Gut feelings are often a sign of **Intuition (N)**. Trusting observable evidence, data, and what has worked before suggests **Sensing (S)**.",
+                detail_ur: "وجدان اکثر **وجدان (N)** کی علامت ہوتا ہے۔ قابل مشاہدہ ثبوت، ڈیٹا، اور جو پہلے کام کر چکا ہے، اس پر بھروسہ کرنا **حسّی (S)** کو ظاہر کرتا ہے۔",
+                score: 1 
+            },
+            { 
+                id: 12, dichotomy: 'N', 
+                text_en: "You often think about 'what if' scenarios.", 
+                text_ur: "آپ اکثر سوچتے ہیں کہ 'کیا ہوتا اگر...'۔", 
+                detail_en: "'What if' thinking is highly imaginative and forward-looking, indicating **Intuition (N)**. If you focus on 'what is' and the immediate situation, choose **No (S)**.",
+                detail_ur: "'کیا ہوتا اگر' کی سوچ انتہائی تخیلاتی اور مستقبل پر مبنی ہوتی ہے، جو **وجدان (N)** کی نشاندہی کرتی ہے۔ اگر آپ 'کیا ہے' اور فوری صورت حال پر توجہ دیتے ہیں، تو **نہیں (S)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 13, dichotomy: 'S', 
+                text_en: "You are good at remembering real-life details and dates.", 
+                text_ur: "آپ کو حقیقی زندگی کی چھوٹی چیزیں اور تاریخیں یاد رہتی ہیں۔", 
+                detail_en: "Memory for concrete details (names, dates, places) is a hallmark of **Sensing (S)**. Intuitives are more likely to remember patterns and concepts than specific facts.",
+                detail_ur: "ٹھوس تفصیلات (نام، تاریخیں، مقامات) کے لیے یادداشت **حسّی (S)** کی ایک خاصیت ہے۔ وجدانی لوگ مخصوص حقائق کے بجائے نمونوں اور تصورات کو یاد رکھنے کا زیادہ امکان رکھتے ہیں۔",
+                score: 1 
+            },
 
             // T/F - Thinking / Feeling (Q14-Q19)
-            { id: 14, dichotomy: 'T', text_en: "When making decisions, you focus on logic and facts.", text_ur: "فیصلے کرتے وقت، آپ منطق اور حقائق پر توجہ دیتے ہیں۔", score: 1 },
-            { id: 15, dichotomy: 'F', text_en: "You let compassion and feelings guide your choices.", text_ur: "آپ کی رہنمائی زیادہ تر ہمدردی اور جذبات سے ہوتی ہے۔", score: 1 },
-            { id: 16, dichotomy: 'T', text_en: "Being honest and correct is more important than avoiding conflict.", text_ur: "ایماندار اور صحیح ہونا جھگڑے سے بچنے سے زیادہ اہم ہے۔", score: 1 },
-            { id: 17, dichotomy: 'F', text_en: "You try to avoid conflict to maintain harmony.", text_ur: "آپ ہم آہنگی برقرار رکھنے کے لیے جھگڑے سے بچتے ہیں۔", score: 1 },
-            { id: 18, dichotomy: 'T', text_en: "You believe rules should apply equally to everyone.", text_ur: "آپ مانتے ہیں کہ اصول سب پر یکساں لاگو ہونے چاہئیں۔", score: 1 },
-            { id: 19, dichotomy: 'F', text_en: "You often worry about how your actions affect others' feelings.", text_ur: "آپ اکثر پریشان ہوتے ہیں کہ آپ کے کام سے دوسروں کے جذبات پر کیا اثر پڑے گا۔", score: 1 },
+            { 
+                id: 14, dichotomy: 'T', 
+                text_en: "When making decisions, you focus on logic and facts.", 
+                text_ur: "فیصلے کرتے وقت، آپ منطق اور حقائق پر توجہ دیتے ہیں۔", 
+                detail_en: "This measures your decision-making style. **Thinking (T)** means basing decisions on objective truth, reason, and cause-and-effect. **Feeling (F)** means basing decisions on values, empathy, and impact on others.",
+                detail_ur: "یہ آپ کے فیصلہ سازی کے انداز کی پیمائش کرتا ہے۔ **سوچ (T)** کا مطلب ہے معروضی سچائی، وجہ، اور سبب و اثر کی بنیاد پر فیصلے کرنا۔ **احساس (F)** کا مطلب ہے اقدار، ہمدردی، اور دوسروں پر اثرات کی بنیاد پر فیصلے کرنا۔",
+                score: 1 
+            },
+            { 
+                id: 15, dichotomy: 'F', 
+                text_en: "You let compassion and feelings guide your choices.", 
+                text_ur: "آپ کی رہنمائی زیادہ تر ہمدردی اور جذبات سے ہوتی ہے۔", 
+                detail_en: "If ensuring emotional fairness and maintaining harmony are more important than being strictly logical, choose **Yes (F)**. If logic is king, choose **No (T)**.",
+                detail_ur: "اگر جذباتی انصاف کو یقینی بنانا اور ہم آہنگی برقرار رکھنا سختی سے منطقی ہونے سے زیادہ اہم ہے، تو **ہاں (F)** کا انتخاب کریں۔ اگر منطق سب سے اہم ہے، تو **نہیں (T)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 16, dichotomy: 'T', 
+                text_en: "Being honest and correct is more important than avoiding conflict.", 
+                text_ur: "ایماندار اور صحیح ہونا جھگڑے سے بچنے سے زیادہ اہم ہے۔", 
+                detail_en: "This highlights the **Thinker (T)** preference for objective truth, even if it causes minor social discomfort. **Feelers (F)** often prioritize people's feelings over blunt truth.",
+                detail_ur: "یہ معروضی سچائی کے لیے **سوچنے والے (T)** کی ترجیح کو اجاگر کرتا ہے، یہاں تک کہ اگر یہ معمولی سماجی تکلیف کا سبب بنے۔ **احساس کرنے والے (F)** اکثر کھری سچائی پر لوگوں کے جذبات کو ترجیح دیتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 17, dichotomy: 'F', 
+                text_en: "You try to avoid conflict to maintain harmony.", 
+                text_ur: "آپ ہم آہنگی برقرار رکھنے کے لیے جھگڑے سے بچتے ہیں۔", 
+                detail_en: "If you actively work to keep the peace and dislike arguments, choose **Yes (F)**. If you see conflict as a necessary means to an honest solution, choose **No (T)**.",
+                detail_ur: "اگر آپ فعال طور پر امن برقرار رکھنے کی کوشش کرتے ہیں اور دلائل کو ناپسند کرتے ہیں، تو **ہاں (F)** کا انتخاب کریں۔ اگر آپ تنازعہ کو ایک دیانتدار حل کے لیے ایک ضروری ذریعہ سمجھتے ہیں، تو **نہیں (T)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 18, dichotomy: 'T', 
+                text_en: "You believe rules should apply equally to everyone.", 
+                text_ur: "آپ مانتے ہیں کہ اصول سب پر یکساں لاگو ہونے چاہئیں۔", 
+                detail_en: "This reflects the **Thinker (T)** value of impersonal justice. **Feelers (F)** might argue that exceptions should be made based on individual circumstances and personal needs.",
+                detail_ur: "یہ غیر شخصی انصاف کی **سوچنے والے (T)** کی قدر کی عکاسی کرتا ہے۔ **احساس کرنے والے (F)** بحث کر سکتے ہیں کہ انفرادی حالات اور ذاتی ضروریات کی بنیاد پر استثناء کیا جانا چاہیے۔",
+                score: 1 
+            },
+            { 
+                id: 19, dichotomy: 'F', 
+                text_en: "You often worry about how your actions affect others' feelings.", 
+                text_ur: "آپ اکثر پریشان ہوتے ہیں کہ آپ کے کام سے دوسروں کے جذبات پر کیا اثر پڑے گا؟", 
+                detail_en: "High empathy and consideration for others' emotional responses are characteristic of **Feeling (F)**. Thinkers are generally less preoccupied with the emotional fallout of their decisions.",
+                detail_ur: "دوسروں کے جذباتی ردعمل کے لیے اعلیٰ ہمدردی اور خیال رکھنا **احساس (F)** کی خصوصیت ہے۔ سوچنے والے عام طور پر اپنے فیصلوں کے جذباتی اثرات سے کم پریشان ہوتے ہیں۔",
+                score: 1 
+            },
 
             // J/P - Judging / Perceiving (Q20-Q25)
-            { id: 20, dichotomy: 'J', text_en: "You prefer to plan your day in detail and stick to it.", text_ur: "آپ اپنے دن کی تفصیل سے منصوبہ بندی کرنا اور اس پر قائم رہنا پسند کرتے ہیں۔", score: 1 },
-            { id: 21, dichotomy: 'P', text_en: "You often wait until the last minute to finish tasks.", text_ur: "آپ اکثر کاموں کو ختم کرنے کے لیے آخری وقت کا انتظار کرتے ہیں۔", score: 1 },
-            { id: 22, dichotomy: 'J', text_en: "You feel uncomfortable when things are messy or unplanned.", text_ur: "جب چیزیں بے ترتیب یا غیر منصوبہ بند ہوں تو آپ بے چین ہوتے ہیں۔", score: 1 },
-            { id: 23, dichotomy: 'P', text_en: "You prefer keeping your options open over committing early.", text_ur: "آپ پہلے وعدہ کرنے کے بجائے اپنے اختیارات کھلے رکھنا پسند کرتے ہیں۔", score: 1 },
-            { id: 24, dichotomy: 'J', text_en: "You like to organize your space and work using clear systems.", text_ur: "آپ واضح نظام کا استعمال کرتے ہوئے اپنی جگہ اور کام کو منظم کرنا پسند کرتے ہیں۔", score: 1 },
-            { id: 25, dichotomy: 'P', text_en: "You enjoy doing things spontaneously without a fixed schedule.", text_ur: "آپ بغیر کسی مقررہ شیڈول کے خود بخود کام کرنا پسند کرتے ہیں۔", score: 1 },
+            { 
+                id: 20, dichotomy: 'J', 
+                text_en: "You prefer to plan your day in detail and stick to it.", 
+                text_ur: "آپ اپنے دن کی تفصیل سے منصوبہ بندی کرنا اور اس پر قائم رہنا پسند کرتے ہیں۔", 
+                detail_en: "This measures your lifestyle. **Judgers (J)** like closure and predictability. They feel stressed without a plan. **Perceivers (P)** prefer spontaneity and find rigid plans restrictive.",
+                detail_ur: "یہ آپ کے طرز زندگی کی پیمائش کرتا ہے۔ **منظم لوگ (J)** بندش اور پیشین گوئی کو پسند کرتے ہیں۔ وہ منصوبہ بندی کے بغیر تناؤ محسوس کرتے ہیں۔ **لچکدار لوگ (P)** فطری پن کو ترجیح دیتے ہیں اور سخت منصوبوں کو پابندی والا سمجھتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 21, dichotomy: 'P', 
+                text_en: "You often wait until the last minute to finish tasks.", 
+                text_ur: "آپ اکثر کاموں کو ختم کرنے کے لیے آخری وقت کا انتظار کرتے ہیں۔", 
+                detail_en: "This tendency, often called **procrastination**, is common among **Perceivers (P)** because they enjoy the pressure of a deadline or prefer to keep their options open until the very end. Judgers find this stressful.",
+                detail_ur: "یہ رجحان، جسے اکثر **ٹال مٹول** کہا جاتا ہے، **لچکدار لوگوں (P)** میں عام ہے کیونکہ وہ آخری تاریخ کے دباؤ سے لطف اندوز ہوتے ہیں یا آخری لمحے تک اپنے اختیارات کھلے رکھنا پسند کرتے ہیں۔ منظم لوگ اسے تناؤ والا سمجھتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 22, dichotomy: 'J', 
+                text_en: "You feel uncomfortable when things are messy or unplanned.", 
+                text_ur: "جب چیزیں بے ترتیب یا غیر منصوبہ بند ہوں تو آپ بے چین ہوتے ہیں۔", 
+                detail_en: "Disorder and lack of structure cause anxiety for **Judgers (J)**. They need things to be settled and organized. **Perceivers (P)** are usually more tolerant of clutter and uncertainty.",
+                detail_ur: "بے ترتیبی اور ساخت کی کمی **منظم لوگوں (J)** کے لیے پریشانی کا سبب بنتی ہے۔ انہیں چیزوں کو طے شدہ اور منظم رکھنے کی ضرورت ہوتی ہے۔ **لچکدار لوگ (P)** عام طور پر بے ترتیبی اور غیر یقینی صورتحال کو زیادہ برداشت کرتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 23, dichotomy: 'P', 
+                text_en: "You prefer keeping your options open over committing early.", 
+                text_ur: "آپ پہلے وعدہ کرنے کے بجائے اپنے اختیارات کھلے رکھنا پسند کرتے ہیں۔", 
+                detail_en: "This is a direct measure of **Perceiving (P)**. If you like the flexibility to change your mind or direction, choose **Yes**. If you prefer to make a firm decision and stick to it, choose **No (J)**.",
+                ur_content: "یہ **لچکدار (P)** کی براہ راست پیمائش ہے۔ اگر آپ اپنا ذہن یا سمت تبدیل کرنے کی لچک کو پسند کرتے ہیں، تو **ہاں** کا انتخاب کریں۔ اگر آپ ایک پختہ فیصلہ کرنا اور اس پر قائم رہنا پسند کرتے ہیں، تو **نہیں (J)** کا انتخاب کریں۔",
+                score: 1 
+            },
+            { 
+                id: 24, dichotomy: 'J', 
+                text_en: "You like to organize your space and work using clear systems.", 
+                text_ur: "آپ واضح نظام کا استعمال کرتے ہوئے اپنی جگہ اور کام کو منظم کرنا پسند کرتے ہیں۔", 
+                detail_en: "**Judgers (J)** thrive on order, schedules, and systems. They want a clear start, middle, and end. **Perceivers (P)** often find formal systems too time-consuming or unnecessary.",
+                detail_ur: "**منظم لوگ (J)** ترتیب، نظام الاوقات، اور نظام پر ترقی کرتے ہیں۔ وہ ایک واضح آغاز، درمیانی، اور اختتام چاہتے ہیں۔ **لچکدار لوگ (P)** عام طور پر رسمی نظاموں کو بہت زیادہ وقت لینے والا یا غیر ضروری سمجھتے ہیں۔",
+                score: 1 
+            },
+            { 
+                id: 25, dichotomy: 'P', 
+                text_en: "You enjoy doing things spontaneously without a fixed schedule.", 
+                text_ur: "آپ بغیر کسی مقررہ شیڈول کے خود بخود کام کرنا پسند کرتے ہیں۔", 
+                detail_en: "If you enjoy acting on the spur of the moment and prefer your days to unfold naturally, choose **Yes (P)**. If you need to have a structure in place before starting something, choose **No (J)**.",
+                detail_ur: "اگر آپ لمحہ بہ لمحہ کام کرنے سے لطف اندوز ہوتے ہیں اور اپنے دنوں کو قدرتی طور پر سامنے آنا پسند کرتے ہیں، تو **ہاں (P)** کا انتخاب کریں۔ اگر آپ کو کچھ شروع کرنے سے پہلے ایک ساخت کی ضرورت ہے، تو **نہیں (J)** کا انتخاب کریں۔",
+                score: 1 
+            },
         ];
 
         const translations = {
@@ -127,27 +352,50 @@
                 'questionNum': 'Question',
                 'yes': 'Yes',
                 'no': 'No',
+                'explainBtn': 'Need help understanding?',
                 'resultIntro': 'Your Personality Type:',
+                'detailBtn': 'Get Detailed Report',
                 'retakeBtn': 'Retake Quiz',
                 'languageLabel': 'Zuban / Language:',
                 'typePrefix': 'Your result:',
-                // Descriptions (highly simplified for space)
-                'INTJ': 'The Architect: Strategic and highly logical thinkers.',
-                'INTP': 'The Logician: Innovative inventors with a thirst for knowledge.',
+                'reportTitle': 'Detailed Personality Report',
+                'explanationHeader': 'Understanding the Question',
+                
+                // --- Simple Descriptions for Result Screen ---
+                'INTJ': 'The Architect: Strategic, independent, and insightful planners.',
+                'INTP': 'The Logician: Innovative, intellectually curious, and abstract thinkers.',
                 'ENTJ': 'The Commander: Bold, imaginative, and strong-willed leaders.',
-                'ENTP': 'The Debater: Quick-witted, smart, and challenging people.',
-                'INFJ': 'The Advocate: Quiet, mystical, yet very inspiring idealists.',
-                'INFP': 'The Mediator: Poetic, kind, and altruistic people, always eager to help a good cause.',
-                'ENFJ': 'The Protagonist: Charismatic and inspiring leaders.',
-                'ENFP': 'The Campaigner: Enthusiastic, creative, and social free spirits.',
-                'ISTJ': 'The Logistician: Practical and fact-minded individuals.',
-                'ISFJ': 'The Defender: Dedicated and warm protectors, always ready to defend their loved ones.',
+                'ENTP': 'The Debater: Quick-witted, challenging, and excellent brainstormers.',
+                'INFJ': 'The Advocate: Quiet, idealistic, yet very inspiring moral leaders.',
+                'INFP': 'The Mediator: Poetic, kind, and always eager to help a good cause.',
+                'ENFJ': 'The Protagonist: Charismatic and inspiring leaders with a passion for helping others.',
+                'ENFP': 'The Campaigner: Enthusiastic, creative, and highly social free spirits.',
+                'ISTJ': 'The Logistician: Practical, fact-minded, and dependable individuals.',
+                'ISFJ': 'The Defender: Dedicated, warm protectors, always ready to defend their loved ones.',
                 'ESTJ': 'The Executive: Excellent administrators, unmatched at managing things or people.',
-                'ESFJ': 'The Consul: Caring, social, and popular people.',
+                'ESFJ': 'The Consul: Caring, social, and popular people who maintain harmony.',
                 'ISTP': 'The Virtuoso: Bold, practical experimenters, masters of all kinds of tools.',
-                'ISFP': 'The Adventurer: Flexible and charming artists, always ready to explore and experience new things.',
+                'ISFP': 'The Adventurer: Flexible, charming artists, and ready to explore new things.',
                 'ESTP': 'The Entrepreneur: Smart, energetic, and perceptive people who truly enjoy living on the edge.',
-                'ESFP': 'The Entertainer: Spontaneous, energetic, and enthusiastic people.',
+                'ESFP': 'The Entertainer: Spontaneous, energetic, and enthusiastic people who love the spotlight.',
+
+                // --- Detailed Reports for Modal (ALL 16 TYPES ARE NOW POPULATED) ---
+                'INTJ_detail': '## The Architect (INTJ)\n\n**Key Strengths:** INTJs are known for their profound independence, strategic planning, and intellectual mastery. They approach life as a giant chessboard, where every move is calculated. They thrive in environments where logic and competence rule.\n\n**Weaknesses:** They can appear distant, often dismissing emotional arguments, and may become impatient with those they perceive as inefficient or illogical. They value knowledge over social warmth.',
+                'INTP_detail': '## The Logician (INTP)\n\n**Key Strengths:** INTPs possess an insatiable thirst for knowledge and are the most logically precise of all types. They are innovative thinkers who can see solutions where others see confusion. They excel in fields requiring deep, abstract analysis.\n\n**Weaknesses:** They struggle with practical details, procrastination on tasks they find boring, and social conventions. They may appear detached or overly theoretical to others.',
+                'ENTJ_detail': '## The Commander (ENTJ)\n\n**Key Strengths:** ENTJs are natural-born leaders—bold, imaginative, and strong-willed. They are excellent at identifying inefficient processes and quickly implementing new, powerful strategies. They are driven by the desire to achieve ambitious goals.\n\n**Weaknesses:** They can be dominating, dismissive of subordinates, and struggle to manage the feelings of others. They need to learn patience and emotional intelligence.',
+                'ENTP_detail': '## The Debater (ENTP)\n\n**Key Strengths:** ENTPs are quick-witted, highly knowledgeable, and challenge assumptions constantly. They love intellectual sparring and thrive in brainstorming sessions. They are excellent at seeing all sides of an argument.\n\n**Weaknesses:** They often fail to follow through on their brilliant ideas, are highly argumentative (sometimes just for fun), and struggle with detailed, repetitive work. They often leave a trail of unfinished projects.',
+                'INFJ_detail': '## The Advocate (INFJ)\n\n**Key Strengths:** INFJs are quiet mystics, insightful, and inspiring idealists. They combine deep emotional understanding with strong moral convictions, making them excellent counselors and effective humanitarians. They seek meaningful connections and purpose.\n\n**Weaknesses:** They can easily burn out by taking on too many problems, are very private, and may become overwhelmed by conflict or criticism. Their perfectionism can lead to indecision.',
+                'INFP_detail': '## The Mediator (INFP)\n\n**Key Strengths:** INFPs are gentle, caring, and idealistic individuals guided by a strong inner moral code. They are highly creative and excel at finding the good in people. They are dedicated to causes they deeply believe in.\n\n**Weaknesses:** They can be overly self-critical, struggle with confrontation, and often neglect practical necessities. They live in a world of possibilities and may lose touch with reality.',
+                'ENFJ_detail': '## The Protagonist (ENFJ)\n\n**Key Strengths:** ENFJs are charismatic, inspirational, and genuinely care about leading others to a better future. They are natural motivators, great communicators, and excellent at building consensus. They are deeply committed to their community.\n\n**Weaknesses:** They can be overly focused on the needs of others, neglect their own well-being, and struggle with criticism. They may become overly manipulative in their desire to help.',
+                'ENFP_detail': '## The Campaigner (ENFP)\n\n**Key Strengths:** ENFPs are enthusiastic, creative, and sociable free spirits. They have an infectious zest for life and thrive on exploring new ideas, people, and experiences. They are highly adaptable and imaginative.\n\n**Weaknesses:** They can be easily distracted, over-commit themselves, and struggle with routine work or managing time effectively. They need constant stimulation and can lose interest quickly.',
+                'ISTJ_detail': '## The Logistician (ISTJ)\n\n**Key Strengths:** ISTJs are practical, fact-minded individuals who value tradition and stability. They are highly dependable, organized, and excellent at following through on commitments. They are the backbone of any organization.\n\n**Weaknesses:** They can be rigid, uncomfortable with change, and often struggle to understand abstract theories or emotional nuances. They tend to stick strictly to rules and procedure.',
+                'ISFJ_detail': '## The Defender (ISFJ)\n\n**Key Strengths:** ISFJs are warm, dedicated, and modest protectors. They are meticulous, reliable, and exceptional at remembering details about others. They derive deep satisfaction from providing comfort and ensuring the well-being of their loved ones.\n\n**Weaknesses:** They are often overworked, struggle to say no, and may be taken advantage of. They are resistant to sudden change and can take criticism very personally.',
+                'ESTJ_detail': '## The Executive (ESTJ)\n\n**Key Strengths:** ESTJs are unmatched administrators and managers, excellent at organizing, implementing policies, and bringing structure. They are decisive, hardworking, and believe strongly in law and order. They excel at clarity and accountability.\n\n**Weaknesses:** They can be inflexible, overly critical, and struggle with people who do not follow clear directions. They may overlook the emotional or creative needs of their teams.',
+                'ESFJ_detail': '## The Consul (ESFJ)\n\n**Key Strengths:** ESFJs are deeply caring, social, and popular people who are the ultimate cheerleaders and organizers of social events. They are excellent at sensing others\' needs and ensuring group harmony. They thrive on appreciation and community.\n\n**Weaknesses:** They are highly sensitive to criticism, overly concerned with social status, and may struggle to adapt to unexpected situations. They sometimes base their self-worth on others\' opinions.',
+                'ISTP_detail': '## The Virtuoso (ISTP)\n\n**Key Strengths:** ISTPs are masters of tools, bold experimenters, and brilliant troubleshooters. They learn best by doing, are highly adaptable, and excel at figuring out how things work. They are calm under pressure and enjoy mechanical challenges.\n\n**Weaknesses:** They can be private, reserved, and are often unpredictable or impulsive. They dislike rules and schedules and may leave tasks unfinished once the core problem is solved.',
+                'ISFP_detail': '## The Adventurer (ISFP)\n\n**Key Strengths:** ISFPs are gentle, charming artists who live in the present moment. They are highly attuned to aesthetics and are known for their quiet spontaneity and passion for exploring new experiences. They follow their own beat.\n\n**Weaknesses:** They avoid confrontation, struggle with long-term planning, and can be unpredictable. They often put off making difficult decisions and may appear shy or withdrawn initially.',
+                'ESTP_detail': '## The Entrepreneur (ESTP)\n\n**Key Strengths:** ESTPs are smart, energetic, and perceptive people who love action and risk. They live in the present, reacting quickly to solve immediate problems, and excel in situations that require quick thinking and practical application.\n\n**Weaknesses:** They can be impulsive, insensitive to others\' feelings, and easily bored by theory or routine. They may disregard rules if they see a faster or more efficient way to get things done.',
+                'ESFP_detail': '## The Entertainer (ESFP)\n\n**Key Strengths:** ESFPs are spontaneous, enthusiastic, and the life of the party. They love the spotlight, are highly social, and have a strong aesthetic sense. They excel at making the most of every moment and cheering up others.\n\n**Weaknesses:** They are easily distracted, struggle with long-term commitments, and can be overly sensitive to criticism. They prioritize immediate fun over future responsibilities.',
             },
             'ur': {
                 'title': 'شخصیت کی قسم کا کوئز',
@@ -156,11 +404,16 @@
                 'questionNum': 'سوال',
                 'yes': 'ہاں',
                 'no': 'نہیں',
+                'explainBtn': 'سوال کو سمجھنے میں مدد درکار ہے؟',
                 'resultIntro': 'آپ کی شخصیت کی قسم:',
+                'detailBtn': 'تفصیلی رپورٹ حاصل کریں',
                 'retakeBtn': 'کوئز دوبارہ دیں',
                 'languageLabel': 'زبان / Language:',
                 'typePrefix': 'آپ کا نتیجہ:',
-                // Descriptions (Urdu)
+                'reportTitle': 'تفصیلی شخصیت کی رپورٹ',
+                'explanationHeader': 'سوال کو سمجھنا',
+
+                // --- Simple Descriptions for Result Screen (Urdu) ---
                 'INTJ': 'معمار: گہری حکمت عملی اور انتہائی منطقی سوچ رکھنے والے۔',
                 'INTP': 'منطقی: علم کی پیاس رکھنے والے نئے خیالات اور ایجادات کے مالک۔',
                 'ENTJ': 'کمانڈر: نڈر، تخیلاتی، اور مضبوط ارادے کے حامل قائد۔',
@@ -177,6 +430,24 @@
                 'ISFP': 'مہم جو: لچکدار اور دلکش فنکار، جو ہمیشہ نئی چیزوں کی تلاش اور تجربہ کے لیے تیار رہتے ہیں۔',
                 'ESTP': 'انٹرپرینیور: ہوشیار، توانائی بخش، اور سمجھدار لوگ جو خطرے مول لینے سے لطف اندوز ہوتے ہیں۔',
                 'ESFP': 'تفریح کنندہ: فطری، پرجوش، اور پرمغز لوگ۔',
+
+                // --- Detailed Reports for Modal (ALL 16 TYPES ARE NOW POPULATED) ---
+                'INTJ_detail': '## معمار (INTJ)\n\n**اہم خوبیاں:** INTJs اپنی گہری خود مختاری، حکمت عملی اور فکری مہارت کے لیے جانے جاتے ہیں۔ وہ زندگی کو ایک شطرنج کے کھیل کے طور پر دیکھتے ہیں، جہاں ہر حرکت کا حساب لگایا جاتا ہے۔ وہ ایسے ماحول میں ترقی کرتے ہیں جہاں منطق اور قابلیت کا راج ہو۔\n\n**کمزوریاں:** وہ دور دراز، اکثر جذباتی دلائل کو مسترد کرنے والے، اور ان لوگوں سے بے صبر ہو سکتے ہیں جنہیں وہ غیر موثر یا غیر منطقی سمجھتے ہیں۔ وہ سماجی گرمجوشی پر علم کو اہمیت دیتے ہیں۔',
+                'INTP_detail': '## منطقی (INTP)\n\n**اہم خوبیاں:** INTPs علم کی ناقابل تسخیر پیاس رکھتے ہیں اور تمام اقسام میں سب سے زیادہ منطقی طور پر درست ہوتے ہیں۔ وہ اختراعی سوچ رکھنے والے ہیں جو ایسے حل دیکھ سکتے ہیں جہاں دوسرے الجھن دیکھتے ہیں۔ وہ گہرے، غیر مرئی تجزیہ کی ضرورت والے شعبوں میں بہترین ہیں۔\n\n**کمزوریاں:** وہ عملی تفصیلات، بورنگ کاموں پر ٹال مٹول، اور سماجی روایات سے جدوجہد کرتے ہیں۔ وہ دوسروں کو الگ تھلگ یا بہت زیادہ نظریاتی لگ سکتے ہیں۔',
+                'ENTJ_detail': '## کمانڈر (ENTJ)\n\n**اہم خوبیاں:** ENTJs پیدائشی قائد ہوتے ہیں—نڈر، تخیلاتی، اور مضبوط ارادے کے حامل۔ وہ غیر موثر عمل کی نشاندہی کرنے اور تیزی سے نئی، طاقتور حکمت عملیوں کو نافذ کرنے میں بہترین ہیں۔ وہ مہتواکانکشی اہداف حاصل کرنے کی خواہش سے کارفرما ہوتے ہیں۔\n\n**کمزوریاں:** وہ غالب، ماتحتوں کو مسترد کرنے والے، اور دوسروں کے احساسات کو منظم کرنے میں جدوجہد کر سکتے ہیں۔ انہیں صبر اور جذباتی ذہانت سیکھنے کی ضرورت ہے۔',
+                'ENTP_detail': '## بحث کرنے والا (ENTP)\n\n**اہم خوبیاں:** ENTPs تیز فہم، انتہائی باشعور، اور مسلسل مفروضوں کو چیلنج کرتے ہیں۔ وہ فکری بحث کو پسند کرتے ہیں اور ذہن سازی کے سیشنز میں ترقی کرتے ہیں۔ وہ کسی دلیل کے تمام پہلوؤں کو دیکھنے میں بہترین ہیں۔\n\n**کمزوریاں:** وہ اکثر اپنے شاندار خیالات پر عمل نہیں کر پاتے، بہت زیادہ بحث کرتے ہیں (کبھی کبھی صرف تفریح کے لیے)، اور تفصیلی، دہرائے جانے والے کام سے جدوجہد کرتے ہیں۔ وہ اکثر نامکمل منصوبوں کا نشان چھوڑ دیتے ہیں۔',
+                'INFJ_detail': '## وکیل (INFJ)\n\n**اہم خوبیاں:** INFJs پرسکون صوفی، بصیرت انگیز، اور متاثر کن مثالی ہیں۔ وہ گہری جذباتی سمجھ کو مضبوط اخلاقی یقین کے ساتھ جوڑتے ہیں، جو انہیں بہترین مشیر اور موثر انسان دوست بناتے ہیں۔ وہ بامعنی رابطوں اور مقصد کی تلاش کرتے ہیں۔\n\n**کمزوریاں:** وہ بہت زیادہ مسائل اٹھا کر آسانی سے تھک سکتے ہیں، بہت نجی ہوتے ہیں، اور تنازعہ یا تنقید سے مغلوب ہو سکتے ہیں۔ ان کی کمال پرستی ہچکچاہٹ کا باعث بن سکتی ہے۔',
+                'INFP_detail': '## درمیانی (INFP)\n\n**اہم خوبیاں:** INFPs ایک مضبوط اندرونی اخلاقی ضابطے سے رہنمائی کرنے والے نرم مزاج، خیال رکھنے والے، اور مثالی افراد ہیں۔ وہ انتہائی تخلیقی ہیں اور لوگوں میں اچھائی تلاش کرنے میں بہترین ہیں۔ وہ ان مقاصد کے لیے وقف ہیں جن پر وہ گہرا یقین رکھتے ہیں۔\n\n**کمزوریاں:** وہ خود تنقیدی ہو سکتے ہیں، تصادم سے جدوجہد کرتے ہیں، اور اکثر عملی ضروریات کو نظرانداز کرتے ہیں۔ وہ امکانات کی دنیا میں رہتے ہیں اور حقیقت سے رابطہ کھو سکتے ہیں۔',
+                'ENFJ_detail': '## مرکزی کردار (ENFJ)\n\n**اہم خوبیاں:** ENFJs کرشماتی، متاثر کن، اور حقیقی طور پر دوسروں کو ایک بہتر مستقبل کی طرف لے جانے کا خیال رکھتے ہیں۔ وہ قدرتی حوصلہ افزائی کرنے والے، بہترین بات چیت کرنے والے، اور اتفاق رائے پیدا کرنے میں بہترین ہیں۔ وہ اپنی کمیونٹی کے لیے گہرائی سے پرعزم ہیں۔\n\n**کمزوریاں:** وہ دوسروں کی ضروریات پر بہت زیادہ توجہ مرکوز کر سکتے ہیں، اپنی فلاح و بہبود کو نظرانداز کر سکتے ہیں، اور تنقید سے جدوجہد کرتے ہیں۔ وہ مدد کرنے کی اپنی خواہش میں حد سے زیادہ ہیر پھیر کرنے والے بن سکتے ہیں۔',
+                'ENFP_detail': '## مہم چلانے والا (ENFP)\n\n**اہم خوبیاں:** ENFPs پرجوش، تخلیقی، اور ملنسار آزاد طبیعت کے لوگ ہیں۔ وہ زندگی کے لیے ایک متعدی جذبہ رکھتے ہیں اور نئے خیالات، لوگوں اور تجربات کو تلاش کرنے پر ترقی کرتے ہیں۔ وہ انتہائی موافقت پذیر اور تخیلاتی ہیں۔\n\n**کمزوریاں:** وہ آسانی سے منتشر ہو سکتے ہیں، اپنے آپ کو زیادہ وعدہ کر سکتے ہیں، اور معمول کے کام یا وقت کو مؤثر طریقے سے منظم کرنے میں جدوجہد کرتے ہیں۔ انہیں مسلسل محرک کی ضرورت ہوتی ہے اور وہ تیزی سے دلچسپی کھو سکتے ہیں۔',
+                'ISTJ_detail': '## لاجیستیشن (ISTJ)\n\n**اہم خوبیاں:** ISTJs عملی، حقیقت پسند افراد ہیں جو روایت اور استحکام کی قدر کرتے ہیں۔ وہ انتہائی قابل بھروسہ، منظم، اور وعدوں پر عمل کرنے میں بہترین ہیں۔ وہ کسی بھی تنظیم کی ریڑھ کی ہڈی ہیں۔\n\n**کمزوریاں:** وہ سخت، تبدیلی سے بے آرام، اور اکثر غیر مرئی نظریات یا جذباتی باریکیوں کو سمجھنے میں جدوجہد کرتے ہیں۔ وہ سختی سے اصولوں اور طریقہ کار پر قائم رہتے ہیں۔',
+                'ISFJ_detail': '## محافظ (ISFJ)\n\n**اہم خوبیاں:** ISFJs گرم جوشی، وقف، اور شائستہ محافظ ہیں۔ وہ محتاط، قابل اعتماد، اور دوسروں کے بارے میں تفصیلات یاد رکھنے میں غیر معمولی ہیں۔ وہ سکون فراہم کرنے اور اپنے پیاروں کی فلاح و بہبود کو یقینی بنانے سے گہرا اطمینان حاصل کرتے ہیں۔\n\n**کمزوریاں:** وہ اکثر زیادہ کام کرتے ہیں، انکار کرنے میں جدوجہد کرتے ہیں، اور ان کا فائدہ اٹھایا جا سکتا ہے۔ وہ اچانک تبدیلی کے خلاف مزاحمت کرتے ہیں اور تنقید کو بہت ذاتی طور پر لے سکتے ہیں۔',
+                'ESTJ_detail': '## ایگزیکٹو (ESTJ)\n\n**اہم خوبیاں:** ESTJs بے مثال منتظمین اور مینیجر ہیں، جو منظم کرنے، پالیسیاں نافذ کرنے، اور ساخت لانے میں بہترین ہیں۔ وہ فیصلہ کن، محنتی، اور قانون و انتظام پر پختہ یقین رکھتے ہیں۔ وہ وضاحت اور جوابدہی میں بہترین ہیں۔\n\n**کمزوریاں:** وہ غیر لچکدار، حد سے زیادہ تنقیدی، اور ان لوگوں سے جدوجہد کر سکتے ہیں جو واضح ہدایات پر عمل نہیں کرتے ہیں۔ وہ اپنی ٹیموں کی جذباتی یا تخلیقی ضروریات کو نظرانداز کر سکتے ہیں۔',
+                'ESFJ_detail': '## قونصل (ESFJ)\n\n**اہم خوبیاں:** ESFJs گہرے خیال رکھنے والے، سماجی، اور مقبول لوگ ہیں جو سماجی تقریبات کے حتمی حوصلہ افزائی کرنے والے اور منتظمین ہیں۔ وہ دوسروں کی ضروریات کو محسوس کرنے اور گروپ ہم آہنگی کو یقینی بنانے میں بہترین ہیں۔ وہ تعریف اور کمیونٹی پر ترقی کرتے ہیں۔\n\n**کمزوریاں:** وہ تنقید کے لیے انتہائی حساس، سماجی حیثیت کے بارے میں حد سے زیادہ فکر مند، اور غیر متوقع حالات کے مطابق ڈھالنے میں جدوجہد کر سکتے ہیں۔ وہ کبھی کبھی اپنی خود کی قدر دوسروں کی رائے پر مبنی کرتے ہیں۔',
+                'ISTP_detail': '## ماہر کاریگر (ISTP)\n\n**اہم خوبیاں:** ISTPs اوزاروں کے ماہر، نڈر تجربہ کار، اور شاندار ٹربل شوٹرز ہیں۔ وہ عمل کرکے بہترین سیکھتے ہیں، انتہائی موافقت پذیر ہیں، اور یہ جاننے میں بہترین ہیں کہ چیزیں کیسے کام کرتی ہیں۔ وہ دباؤ میں پرسکون رہتے ہیں اور میکانکی چیلنجوں سے لطف اندوز ہوتے ہیں۔\n\n**کمزوریاں:** وہ نجی، محفوظ، اور اکثر غیر متوقع یا بے خود ہو سکتے ہیں۔ وہ قواعد اور نظام الاوقات کو ناپسند کرتے ہیں اور بنیادی مسئلہ حل ہونے کے بعد کاموں کو نامکمل چھوڑ سکتے ہیں۔',
+                'ISFP_detail': '## مہم جو (ISFP)\n\n**اہم خوبیاں:** ISFPs نرم مزاج، دلکش فنکار ہیں جو موجودہ لمحے میں رہتے ہیں۔ وہ جمالیات کے ساتھ انتہائی ہم آہنگ ہیں اور اپنی خاموش فطری پن اور نئے تجربات کو تلاش کرنے کے جذبے کے لیے جانے جاتے ہیں۔ وہ اپنی تال پر چلتے ہیں۔\n\n**کمزوریاں:** وہ تصادم سے گریز کرتے ہیں، طویل مدتی منصوبہ بندی سے جدوجہد کرتے ہیں، اور غیر متوقع ہو سکتے ہیں۔ وہ اکثر مشکل فیصلے کرنے میں تاخیر کرتے ہیں اور ابتدائی طور پر شرمیلے یا پیچھے ہٹے ہوئے لگ سکتے ہیں۔',
+                'ESTP_detail': '## انٹرپرینیور (ESTP)\n\n**اہم خوبیاں:** ESTPs ہوشیار، توانائی بخش، اور سمجھدار لوگ ہیں جو عمل اور خطرے سے محبت کرتے ہیں۔ وہ حال میں رہتے ہیں، فوری مسائل کو حل کرنے کے لیے تیزی سے ردعمل ظاہر کرتے ہیں، اور ان حالات میں بہترین ہیں جن میں فوری سوچ اور عملی اطلاق کی ضرورت ہوتی ہے۔\n\n**کمزوریاں:** وہ بے خود، دوسروں کے احساسات سے بے حس، اور نظریہ یا معمول سے آسانی سے بور ہو سکتے ہیں۔ وہ قواعد کو نظرانداز کر سکتے ہیں اگر وہ کام کرنے کا کوئی تیز یا زیادہ موثر طریقہ دیکھتے ہیں۔',
+                'ESFP_detail': '## تفریح کنندہ (ESFP)\n\n**اہم خوبیاں:** ESFPs فطری، پرجوش، اور پارٹی کی جان ہوتے ہیں۔ وہ توجہ کا مرکز بننا پسند کرتے ہیں، انتہائی سماجی ہیں، اور جمالیاتی حس رکھتے ہیں۔ وہ ہر لمحے کا زیادہ سے زیادہ فائدہ اٹھانے اور دوسروں کو خوش کرنے میں بہترین ہیں۔\n\n**کمزوریاں:** وہ آسانی سے منتشر ہو سکتے ہیں، طویل مدتی وعدوں سے جدوجہد کرتے ہیں، اور تنقید کے لیے حد سے زیادہ حساس ہو سکتے ہیں۔ وہ مستقبل کی ذمہ داریوں پر فوری تفریح کو ترجیح دیتے ہیں۔',
             }
         };
 
@@ -184,6 +455,7 @@
         let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
         let currentLanguage = document.getElementById('language-select').value;
         const totalQuestions = questions.length;
+        let finalType = ''; // Store the final type for the detail button
 
         // --- UI Update and Language Functions ---
         function getTranslation(key) {
@@ -200,6 +472,7 @@
             document.getElementById('start-text').classList.toggle('text-ur', isUrdu);
             document.getElementById('result-intro').classList.toggle('text-ur', isUrdu);
             document.getElementById('type-description').classList.toggle('text-ur', isUrdu);
+            document.getElementById('explain-button').classList.toggle('text-ur', isUrdu);
 
             // Update all static text content
             document.getElementById('app-title').textContent = getTranslation('title');
@@ -210,6 +483,8 @@
             document.getElementById('result-intro').textContent = getTranslation('resultIntro');
             document.getElementById('retake-button').textContent = getTranslation('retakeBtn');
             document.getElementById('language-label').textContent = getTranslation('languageLabel');
+            document.getElementById('explain-button').textContent = getTranslation('explainBtn');
+            document.getElementById('detail-button').textContent = getTranslation('detailBtn');
         }
         
         function updateUIForLanguage() {
@@ -243,6 +518,10 @@
 
             document.getElementById('question-text').classList.toggle('text-ur', isUrdu);
             document.getElementById('question-number').classList.toggle('text-ur', isUrdu);
+            
+            // Re-apply correct text direction to the explanation button content
+            document.getElementById('explain-button').classList.toggle('text-ur', isUrdu);
+
 
             document.getElementById('question-number').textContent = `${getTranslation('questionNum')} ${currentQuestionIndex + 1} of ${totalQuestions}`;
             document.getElementById('question-text').textContent = q[qTextKey];
@@ -279,7 +558,16 @@
                 case 'F': return 'T';
                 case 'J': return 'P';
                 case 'P': return 'J';
+                default: return '';
             }
+        }
+
+        function determineType() {
+             const letter1 = scores.E >= scores.I ? 'E' : 'I';
+             const letter2 = scores.S >= scores.N ? 'S' : 'N';
+             const letter3 = scores.T >= scores.F ? 'T' : 'F';
+             const letter4 = scores.J >= scores.P ? 'J' : 'P';
+             return letter1 + letter2 + letter3 + letter4;
         }
 
         function showResult() {
@@ -287,13 +575,7 @@
             document.getElementById('result-screen').classList.remove('hidden');
             document.getElementById('progress-fill').style.width = '100%';
 
-            // Determine the final 4-letter type
-            const letter1 = scores.E >= scores.I ? 'E' : 'I';
-            const letter2 = scores.S >= scores.N ? 'S' : 'N';
-            const letter3 = scores.T >= scores.F ? 'T' : 'F';
-            const letter4 = scores.J >= scores.P ? 'J' : 'P';
-
-            const finalType = letter1 + letter2 + letter3 + letter4;
+            finalType = determineType();
             
             // Apply directionality to results
             const isUrdu = currentLanguage === 'ur';
@@ -313,6 +595,64 @@
             document.getElementById('progress-fill').style.width = '0%';
             updateStaticText(); // Reset any translated start text
         }
+        
+        // --- Modal Functions ---
+
+        function showModal(title, content) {
+            const isUrdu = currentLanguage === 'ur';
+
+            document.getElementById('modal-title').textContent = title;
+            // Markdown to HTML conversion for the modal content (basic conversion)
+            let htmlContent = content.replace(/##\s*(.*)/g, '<h3 class="text-xl font-semibold mt-4 mb-2">$1</h3>');
+            htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            htmlContent = htmlContent.replace(/\n/g, '<br>'); // Simple line breaks
+            
+            document.getElementById('modal-content').innerHTML = htmlContent;
+            
+            // Apply RTL to modal content if Urdu is selected
+            document.getElementById('modal-title').classList.toggle('text-ur', isUrdu);
+            document.getElementById('modal-content').classList.toggle('text-ur', isUrdu);
+
+            document.getElementById('explanation-modal').classList.remove('hidden');
+            document.getElementById('explanation-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('explanation-modal').classList.add('hidden');
+            document.getElementById('explanation-modal').classList.remove('active');
+        }
+
+        function showQuestionExplanation() {
+            const q = questions[currentQuestionIndex];
+            
+            // FIX: Use the specific detail property from the question object
+            const content = currentLanguage === 'en' ? q.detail_en : q.detail_ur;
+            const title = getTranslation('explanationHeader');
+
+            showModal(title, content);
+        }
+
+        function showResultDetail() {
+            if (!finalType) return; // Safety check
+
+            const detailKey = finalType + '_detail';
+            
+            let content = '';
+            
+            // Use the determined finalType to look up the detailed report
+            if (currentLanguage === 'en' && translations['en'][detailKey]) {
+                content = translations['en'][detailKey];
+            } else if (currentLanguage === 'ur' && translations['ur'][detailKey]) {
+                content = translations['ur'][detailKey];
+            } else {
+                // Should not happen now that all 16 are populated
+                content = currentLanguage === 'en' ? 'Detailed report not found.' : 'تفصیلی رپورٹ نہیں ملی۔';
+            }
+
+            // The content already contains the title in the heading (##), but we set the modal title too
+            showModal(getTranslation('reportTitle'), content);
+        }
+
 
         // Initialize UI on load
         window.onload = function() {
