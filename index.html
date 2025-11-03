@@ -3,179 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaborative Whiteboard</title>
+    <title>Personality Type Quiz</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        /* Style for the notes container */
-        #notes-container {
-            min-height: 200px;
-            max-height: 400px;
-            overflow-y: auto;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Added font family for Urdu to ensure Nastaliq support */
         }
-        .note-card {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s;
+        /* Style for Urdu text alignment */
+        .text-ur {
+            direction: rtl;
+            text-align: right;
         }
-        .note-card:hover {
-            transform: translateY(-2px);
+        #app-title {
+            direction: rtl; /* Apply RTL to the title for better centering */
         }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-    <div id="app" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-xl">
-        <h1 class="text-3xl font-extrabold text-blue-600 mb-2 text-center">
-            Collaborative Notes (UI Demo)
+    <div id="app" class="bg-white p-6 md:p-10 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 id="app-title" class="text-3xl font-extrabold text-gray-900 mb-6 text-center transition-colors duration-300">
+            Personality Type Quiz
         </h1>
-        <p class="text-center text-sm text-gray-500 mb-6">
-            Add notes to the board. (Note: Real-time sharing requires a database setup beyond GitHub Pages)
-        </p>
 
-        <!-- User Info -->
-        <div class="mb-6 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-            <p class="text-xs font-semibold text-blue-800">Your User ID (Local Session):</p>
-            <p id="user-id" class="text-sm font-mono text-gray-800 break-all mt-1">Local User - 12345</p>
+        <!-- Language Selector -->
+        <div class="mb-6 text-center">
+            <label for="language-select" class="text-gray-700 font-medium mr-2" id="language-label">Zuban / Language:</label>
+            <select id="language-select" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" onchange="updateUIForLanguage()">
+                <option value="en">English</option>
+                <option value="ur">اردو (Urdu)</option>
+            </select>
         </div>
 
-        <!-- Input Section -->
-        <div class="mb-6 flex space-x-2">
-            <input 
-                type="text" 
-                id="new-note-input" 
-                placeholder="Write a quick thought..." 
-                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                maxlength="150"
-            />
-            <button 
-                id="add-note-button" 
-                onclick="addNote()" 
-                class="py-3 px-6 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition duration-200 shadow-md flex-shrink-0"
-            >
-                Add Note
-            </button>
-        </div>
+        <!-- Quiz Container -->
+        <div id="quiz-container">
+            <!-- Start Screen -->
+            <div id="start-screen" class="text-center">
+                <p id="start-text" class="text-gray-600 mb-6">
+                    Answer 25 questions to discover your personality type (MBTI style).
+                </p>
+                <button id="start-button" onclick="startQuiz()" class="py-3 px-6 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                    Start Quiz
+                </button>
+            </div>
 
-        <!-- Notes Display Section -->
-        <div class="mb-4">
-            <h2 class="text-xl font-bold text-gray-700 mb-3">Local Whiteboard</h2>
-            <div id="notes-container" class="space-y-3 p-2 bg-gray-50 rounded-lg border">
-                <!-- Initial placeholder notes -->
-                <div class="note-card p-3 rounded-lg bg-white border border-gray-100">
-                    <p class="text-gray-900 font-medium whitespace-pre-wrap">This is a demo note to show the styling.</p>
-                    <div class="mt-1 flex justify-between items-center text-xs text-gray-400 border-t border-gray-50 pt-1">
-                        <span class="text-blue-500 font-semibold">Posted by: Demo</span>
-                        <span>12:00 PM | 1/1/2025</span>
-                    </div>
+            <!-- Question Screen -->
+            <div id="question-screen" class="hidden">
+                <div class="mb-4">
+                    <p id="question-number" class="text-sm text-gray-500 mb-2"></p>
+                    <p id="question-text" class="text-xl font-semibold text-gray-800"></p>
+                </div>
+                
+                <div class="flex flex-col space-y-4">
+                    <button id="answer-yes" onclick="answerQuestion(1)" class="py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition duration-150 shadow-sm">
+                        Yes
+                    </button>
+                    <button id="answer-no" onclick="answerQuestion(0)" class="py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition duration-150 shadow-sm">
+                        No
+                    </button>
+                </div>
+                <div id="progress-bar" class="w-full bg-gray-200 rounded-full h-2.5 mt-6">
+                    <div id="progress-fill" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Status Message -->
-        <div id="status-message" class="text-center text-gray-500 text-sm mt-4">
-             Notes added here will only appear in your browser session.
+            <!-- Result Screen -->
+            <div id="result-screen" class="hidden text-center">
+                <p id="result-intro" class="text-lg text-gray-600 mb-4"></p>
+                <p id="final-type" class="text-6xl font-extrabold text-blue-600 mb-4"></p>
+                <p id="type-description" class="text-gray-700 mb-6"></p>
+                <button id="retake-button" onclick="resetQuiz()" class="py-3 px-6 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-200 shadow-md">
+                    Retake Quiz
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- JavaScript Logic (No Firebase) -->
     <script>
-        // Global array to store notes locally in the browser session
-        let localNotes = [];
-        const notesContainer = document.getElementById('notes-container');
-        const userIdDisplay = document.getElementById('user-id');
-        
-        // Use a simple, locally stored user ID for display purposes
-        let currentUserId = localStorage.getItem('localUserId') || crypto.randomUUID().substring(0, 10);
-        localStorage.setItem('localUserId', currentUserId);
-        userIdDisplay.textContent = 'Local User - ' + currentUserId;
-
-
-        // 1. Rendering Notes to the UI
-        function displayNotes() {
-            notesContainer.innerHTML = ''; // Clear existing notes
-
-            if (localNotes.length === 0) {
-                notesContainer.innerHTML = `<p class="text-center text-gray-400 p-8">Start adding notes now!</p>`;
-                return;
-            }
-
-            // Sort by timestamp (newest first)
-            localNotes.sort((a, b) => b.timestamp - a.timestamp);
-
-            localNotes.forEach(note => {
-                const noteElement = document.createElement('div');
-                noteElement.className = 'note-card p-3 rounded-lg bg-white border border-gray-100';
-                
-                // Format the timestamp
-                const date = new Date(note.timestamp);
-                const timeString = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                const dateString = date.toLocaleDateString();
-                
-                const isMine = note.userId === currentUserId;
-                const authorDisplay = isMine ? 'You' : note.userId.substring(0, 8) + '...';
-
-                noteElement.innerHTML = `
-                    <p class="text-gray-900 font-medium whitespace-pre-wrap">${note.content}</p>
-                    <div class="mt-1 flex justify-between items-center text-xs text-gray-400 border-t border-gray-50 pt-1">
-                        <span class="${isMine ? 'text-blue-500 font-semibold' : 'text-gray-500'}">Posted by: ${authorDisplay}</span>
-                        <span>${timeString} | ${dateString}</span>
-                    </div>
-                `;
-                notesContainer.appendChild(noteElement);
-            });
-        }
-
-
-        // 2. Adding New Notes
-        window.addNote = function() {
-            const inputElement = document.getElementById('new-note-input');
-            const content = inputElement.value.trim();
-
-            if (!content) {
-                return;
-            }
-
-            const newNote = {
-                content: content,
-                userId: currentUserId,
-                timestamp: Date.now() // Local timestamp
-            };
+        // --- Core Quiz Data ---
+        const questions = [
+            // E/I - Extraversion / Introversion (Q1-Q6)
+            { id: 1, dichotomy: 'E', text_en: "After social gatherings, you feel energized.", text_ur: "لوگوں سے ملنے کے بعد آپ کو طاقت محسوس ہوتی ہے۔", score: 1 },
+            { id: 2, dichotomy: 'I', text_en: "You prefer quiet activities and hobbies.", text_ur: "آپ پرسکون مشاغل اور کام پسند کرتے ہیں۔", score: 1 },
+            { id: 3, dichotomy: 'E', text_en: "You often talk before thinking everything through.", text_ur: "آپ اکثر سوچنے سے پہلے بولنا شروع کر دیتے ہیں۔", score: 1 },
+            { id: 4, dichotomy: 'I', text_en: "You often find silence or alone time comforting.", text_ur: "آپ کو اکیلے رہنا اور خاموشی اچھی لگتی ہے۔", score: 1 },
+            { id: 5, dichotomy: 'E', text_en: "You find it easy to start talking to strangers.", text_ur: "آپ کے لیے اجنبیوں سے بات شروع کرنا آسان ہے۔", score: 1 },
+            { id: 6, dichotomy: 'I', text_en: "You find too much social interaction tiring.", text_ur: "زیادہ سماجی سرگرمی آپ کو تھکا دیتی ہے۔", score: 1 },
             
-            // Add to local array
-            localNotes.push(newNote);
-            
-            // Re-render the UI
-            displayNotes();
+            // S/N - Sensing / Intuition (Q7-Q13)
+            { id: 7, dichotomy: 'S', text_en: "You focus on what is real and practical right now.", text_ur: "آپ اس بات پر توجہ دیتے ہیں جو ابھی حقیقی اور عملی ہے۔", score: 1 },
+            { id: 8, dichotomy: 'N', text_en: "You are more interested in the future and new ideas.", text_ur: "آپ کو مستقبل اور نئے خیالات میں زیادہ دلچسپی ہے۔", score: 1 },
+            { id: 9, dichotomy: 'S', text_en: "You rely on facts and details rather than theories.", text_ur: "آپ نظریات کے بجائے حقائق اور تفصیلات پر بھروسہ کرتے ہیں۔", score: 1 },
+            { id: 10, dichotomy: 'N', text_en: "You enjoy discussing abstract or complex concepts.", text_ur: "آپ پیچیدہ اور گہری باتوں پر بحث کرنا پسند کرتے ہیں۔", score: 1 },
+            { id: 11, dichotomy: 'S', text_en: "You trust proven evidence more than a gut feeling.", text_ur: "آپ وجدان سے زیادہ ثابت شدہ ثبوت پر یقین رکھتے ہیں۔", score: 1 },
+            { id: 12, dichotomy: 'N', text_en: "You often think about 'what if' scenarios.", text_ur: "آپ اکثر سوچتے ہیں کہ 'کیا ہوتا اگر...'۔", score: 1 },
+            { id: 13, dichotomy: 'S', text_en: "You are good at remembering real-life details and dates.", text_ur: "آپ کو حقیقی زندگی کی چھوٹی چیزیں اور تاریخیں یاد رہتی ہیں۔", score: 1 },
 
-            inputElement.value = ''; // Clear input on success
+            // T/F - Thinking / Feeling (Q14-Q19)
+            { id: 14, dichotomy: 'T', text_en: "When making decisions, you focus on logic and facts.", text_ur: "فیصلے کرتے وقت، آپ منطق اور حقائق پر توجہ دیتے ہیں۔", score: 1 },
+            { id: 15, dichotomy: 'F', text_en: "You let compassion and feelings guide your choices.", text_ur: "آپ کی رہنمائی زیادہ تر ہمدردی اور جذبات سے ہوتی ہے۔", score: 1 },
+            { id: 16, dichotomy: 'T', text_en: "Being honest and correct is more important than avoiding conflict.", text_ur: "ایماندار اور صحیح ہونا جھگڑے سے بچنے سے زیادہ اہم ہے۔", score: 1 },
+            { id: 17, dichotomy: 'F', text_en: "You try to avoid conflict to maintain harmony.", text_ur: "آپ ہم آہنگی برقرار رکھنے کے لیے جھگڑے سے بچتے ہیں۔", score: 1 },
+            { id: 18, dichotomy: 'T', text_en: "You believe rules should apply equally to everyone.", text_ur: "آپ مانتے ہیں کہ اصول سب پر یکساں لاگو ہونے چاہئیں۔", score: 1 },
+            { id: 19, dichotomy: 'F', text_en: "You often worry about how your actions affect others' feelings.", text_ur: "آپ اکثر پریشان ہوتے ہیں کہ آپ کے کام سے دوسروں کے جذبات پر کیا اثر پڑے گا۔", score: 1 },
+
+            // J/P - Judging / Perceiving (Q20-Q25)
+            { id: 20, dichotomy: 'J', text_en: "You prefer to plan your day in detail and stick to it.", text_ur: "آپ اپنے دن کی تفصیل سے منصوبہ بندی کرنا اور اس پر قائم رہنا پسند کرتے ہیں۔", score: 1 },
+            { id: 21, dichotomy: 'P', text_en: "You often wait until the last minute to finish tasks.", text_ur: "آپ اکثر کاموں کو ختم کرنے کے لیے آخری وقت کا انتظار کرتے ہیں۔", score: 1 },
+            { id: 22, dichotomy: 'J', text_en: "You feel uncomfortable when things are messy or unplanned.", text_ur: "جب چیزیں بے ترتیب یا غیر منصوبہ بند ہوں تو آپ بے چین ہوتے ہیں۔", score: 1 },
+            { id: 23, dichotomy: 'P', text_en: "You prefer keeping your options open over committing early.", text_ur: "آپ پہلے وعدہ کرنے کے بجائے اپنے اختیارات کھلے رکھنا پسند کرتے ہیں۔", score: 1 },
+            { id: 24, dichotomy: 'J', text_en: "You like to organize your space and work using clear systems.", text_ur: "آپ واضح نظام کا استعمال کرتے ہوئے اپنی جگہ اور کام کو منظم کرنا پسند کرتے ہیں۔", score: 1 },
+            { id: 25, dichotomy: 'P', text_en: "You enjoy doing things spontaneously without a fixed schedule.", text_ur: "آپ بغیر کسی مقررہ شیڈول کے خود بخود کام کرنا پسند کرتے ہیں۔", score: 1 },
+        ];
+
+        const translations = {
+            'en': {
+                'title': 'Personality Type Quiz',
+                'startText': 'Answer 25 questions to discover your personality type (MBTI style).',
+                'startBtn': 'Start Quiz',
+                'questionNum': 'Question',
+                'yes': 'Yes',
+                'no': 'No',
+                'resultIntro': 'Your Personality Type:',
+                'retakeBtn': 'Retake Quiz',
+                'languageLabel': 'Zuban / Language:',
+                'typePrefix': 'Your result:',
+                // Descriptions (highly simplified for space)
+                'INTJ': 'The Architect: Strategic and highly logical thinkers.',
+                'INTP': 'The Logician: Innovative inventors with a thirst for knowledge.',
+                'ENTJ': 'The Commander: Bold, imaginative, and strong-willed leaders.',
+                'ENTP': 'The Debater: Quick-witted, smart, and challenging people.',
+                'INFJ': 'The Advocate: Quiet, mystical, yet very inspiring idealists.',
+                'INFP': 'The Mediator: Poetic, kind, and altruistic people, always eager to help a good cause.',
+                'ENFJ': 'The Protagonist: Charismatic and inspiring leaders.',
+                'ENFP': 'The Campaigner: Enthusiastic, creative, and social free spirits.',
+                'ISTJ': 'The Logistician: Practical and fact-minded individuals.',
+                'ISFJ': 'The Defender: Dedicated and warm protectors, always ready to defend their loved ones.',
+                'ESTJ': 'The Executive: Excellent administrators, unmatched at managing things or people.',
+                'ESFJ': 'The Consul: Caring, social, and popular people.',
+                'ISTP': 'The Virtuoso: Bold, practical experimenters, masters of all kinds of tools.',
+                'ISFP': 'The Adventurer: Flexible and charming artists, always ready to explore and experience new things.',
+                'ESTP': 'The Entrepreneur: Smart, energetic, and perceptive people who truly enjoy living on the edge.',
+                'ESFP': 'The Entertainer: Spontaneous, energetic, and enthusiastic people.',
+            },
+            'ur': {
+                'title': 'شخصیت کی قسم کا کوئز',
+                'startText': 'اپنی شخصیت کی قسم (MBTI style) جاننے کے لیے 25 آسان سوالوں کے جواب دیں۔',
+                'startBtn': 'کوئز شروع کریں',
+                'questionNum': 'سوال',
+                'yes': 'ہاں',
+                'no': 'نہیں',
+                'resultIntro': 'آپ کی شخصیت کی قسم:',
+                'retakeBtn': 'کوئز دوبارہ دیں',
+                'languageLabel': 'زبان / Language:',
+                'typePrefix': 'آپ کا نتیجہ:',
+                // Descriptions (Urdu)
+                'INTJ': 'معمار: گہری حکمت عملی اور انتہائی منطقی سوچ رکھنے والے۔',
+                'INTP': 'منطقی: علم کی پیاس رکھنے والے نئے خیالات اور ایجادات کے مالک۔',
+                'ENTJ': 'کمانڈر: نڈر، تخیلاتی، اور مضبوط ارادے کے حامل قائد۔',
+                'ENTP': 'بحث کرنے والا: ذہین، تیز فہم، اور چیلنج دینے والے لوگ۔',
+                'INFJ': 'وکیل: پرسکون، پر اسرار، پھر بھی بہت متاثر کن مثالی شخصیتیں۔',
+                'INFP': 'درمیانی: شاعرانہ، مہربان، اور نیک لوگ، ہمیشہ اچھے مقصد میں مدد کے لیے تیار۔',
+                'ENFJ': 'مرکزی کردار: کرشماتی اور متاثر کن قائدین۔',
+                'ENFP': 'مہم چلانے والا: پرجوش، تخلیقی، اور سماجی طور پر آزاد طبیعت کے لوگ۔',
+                'ISTJ': 'لاجیستیشن: عملی اور حقیقت پر یقین رکھنے والے افراد۔',
+                'ISFJ': 'محافظ: وقف اور گرم جوشی سے دفاع کرنے والے، اپنے پیاروں کے لیے ہمیشہ تیار۔',
+                'ESTJ': 'ایگزیکٹو: بہترین منتظمین، چیزوں یا لوگوں کو منظم کرنے میں لاجواب۔',
+                'ESFJ': 'قونصل: خیال رکھنے والے، سماجی، اور مقبول لوگ۔',
+                'ISTP': 'ماہر کاریگر: نڈر، عملی تجربہ کار، ہر قسم کے اوزاروں کے ماہر۔',
+                'ISFP': 'مہم جو: لچکدار اور دلکش فنکار، جو ہمیشہ نئی چیزوں کی تلاش اور تجربہ کے لیے تیار رہتے ہیں۔',
+                'ESTP': 'انٹرپرینیور: ہوشیار، توانائی بخش، اور سمجھدار لوگ جو خطرے مول لینے سے لطف اندوز ہوتے ہیں۔',
+                'ESFP': 'تفریح کنندہ: فطری، پرجوش، اور پرمغز لوگ۔',
+            }
         };
 
-        // Initialize the app on load
+        let currentQuestionIndex = 0;
+        let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+        let currentLanguage = document.getElementById('language-select').value;
+        const totalQuestions = questions.length;
+
+        // --- UI Update and Language Functions ---
+        function getTranslation(key) {
+            // Fallback to English if translation is missing
+            return translations[currentLanguage][key] || translations['en'][key];
+        }
+
+        function updateStaticText() {
+            currentLanguage = document.getElementById('language-select').value;
+            const isUrdu = currentLanguage === 'ur';
+
+            // Apply directionality for Urdu elements
+            document.getElementById('app-title').classList.toggle('text-ur', isUrdu);
+            document.getElementById('start-text').classList.toggle('text-ur', isUrdu);
+            document.getElementById('result-intro').classList.toggle('text-ur', isUrdu);
+            document.getElementById('type-description').classList.toggle('text-ur', isUrdu);
+
+            // Update all static text content
+            document.getElementById('app-title').textContent = getTranslation('title');
+            document.getElementById('start-text').textContent = getTranslation('startText');
+            document.getElementById('start-button').textContent = getTranslation('startBtn');
+            document.getElementById('answer-yes').textContent = getTranslation('yes');
+            document.getElementById('answer-no').textContent = getTranslation('no');
+            document.getElementById('result-intro').textContent = getTranslation('resultIntro');
+            document.getElementById('retake-button').textContent = getTranslation('retakeBtn');
+            document.getElementById('language-label').textContent = getTranslation('languageLabel');
+        }
+        
+        function updateUIForLanguage() {
+            updateStaticText();
+            // If quiz is running, re-render current question
+            if (!document.getElementById('question-screen').classList.contains('hidden')) {
+                renderQuestion();
+            }
+            // If results are shown, re-render results
+            if (!document.getElementById('result-screen').classList.contains('hidden')) {
+                showResult(); 
+            }
+        }
+
+        // --- Quiz Flow Functions ---
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('question-screen').classList.remove('hidden');
+            document.getElementById('language-select').disabled = true;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            const qTextKey = currentLanguage === 'en' ? 'text_en' : 'text_ur';
+            const progress = (currentQuestionIndex / totalQuestions) * 100;
+            const isUrdu = currentLanguage === 'ur';
+
+            document.getElementById('question-text').classList.toggle('text-ur', isUrdu);
+            document.getElementById('question-number').classList.toggle('text-ur', isUrdu);
+
+            document.getElementById('question-number').textContent = `${getTranslation('questionNum')} ${currentQuestionIndex + 1} of ${totalQuestions}`;
+            document.getElementById('question-text').textContent = q[qTextKey];
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+        }
+
+        function answerQuestion(isYes) {
+            const q = questions[currentQuestionIndex];
+            
+            // Score Logic: Yes (1) for the stated dichotomy, No (1) for the opposite.
+            if (isYes) {
+                scores[q.dichotomy] += q.score;
+            } else {
+                const opposite = getOppositeDichotomy(q.dichotomy);
+                scores[opposite] += q.score;
+            }
+
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < totalQuestions) {
+                renderQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function getOppositeDichotomy(d) {
+            switch(d) {
+                case 'E': return 'I';
+                case 'I': return 'E';
+                case 'S': return 'N';
+                case 'N': return 'S';
+                case 'T': return 'F';
+                case 'F': return 'T';
+                case 'J': return 'P';
+                case 'P': return 'J';
+            }
+        }
+
+        function showResult() {
+            document.getElementById('question-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('progress-fill').style.width = '100%';
+
+            // Determine the final 4-letter type
+            const letter1 = scores.E >= scores.I ? 'E' : 'I';
+            const letter2 = scores.S >= scores.N ? 'S' : 'N';
+            const letter3 = scores.T >= scores.F ? 'T' : 'F';
+            const letter4 = scores.J >= scores.P ? 'J' : 'P';
+
+            const finalType = letter1 + letter2 + letter3 + letter4;
+            
+            // Apply directionality to results
+            const isUrdu = currentLanguage === 'ur';
+            document.getElementById('result-intro').classList.toggle('text-ur', isUrdu);
+            document.getElementById('type-description').classList.toggle('text-ur', isUrdu);
+
+            // Display results
+            document.getElementById('final-type').textContent = finalType;
+            document.getElementById('type-description').textContent = getTranslation(finalType);
+            document.getElementById('result-intro').textContent = `${getTranslation('typePrefix')} ${getTranslation('resultIntro')}`;
+        }
+
+        function resetQuiz() {
+            document.getElementById('language-select').disabled = false;
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+            document.getElementById('progress-fill').style.width = '0%';
+            updateStaticText(); // Reset any translated start text
+        }
+
+        // Initialize UI on load
         window.onload = function() {
-            // Display an initial note list
-            localNotes = [
-                { content: "Project ideas for next week.", userId: 'demo-user-1', timestamp: Date.now() - 5000000 },
-                { content: "Remember to check the PWA installation on Android.", userId: currentUserId, timestamp: Date.now() - 3000000 }
-            ];
-            displayNotes();
-        }
-    </script>
-    
-    <!-- PWA Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(registration => {
-                        console.log('Service Worker registered:', registration);
-                    })
-                    .catch(error => {
-                        console.error('Service Worker registration failed:', error);
-                    });
-            });
-        }
+            updateStaticText();
+        };
     </script>
 </body>
 </html>
